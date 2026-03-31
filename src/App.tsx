@@ -36,12 +36,28 @@ export default function App() {
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
+  const [initialMessageUser, setInitialMessageUser] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<User>(CURRENT_USER);
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS);
   const [showCoinToast, setShowCoinToast] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const [showHeart, setShowHeart] = useState({ show: false, x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Coin Earning Logic
+  useEffect(() => {
+    if (currentView === 'home') {
+      const interval = setInterval(() => {
+        setUser(prev => ({
+          ...prev,
+          coins: prev.coins + 1
+        }));
+        setShowCoinToast(true);
+        setTimeout(() => setShowCoinToast(false), 2000);
+      }, 10000); // Earn 1 coin every 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [currentView]);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -133,6 +149,11 @@ export default function App() {
     }
   };
 
+  const handleMessageClick = (author: string) => {
+    setInitialMessageUser(author);
+    setIsMessagesOpen(true);
+  };
+
   const renderHome = () => (
     <div className="h-full w-full flex bg-[#050505]">
       {/* Left Sidebar (Desktop Only) */}
@@ -190,6 +211,7 @@ export default function App() {
             onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
             onLike={(isLiked) => handleLike(video.id, isLiked)}
             onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
+            onMessageClick={handleMessageClick}
             loop={true}
           />
         ))}
@@ -605,6 +627,21 @@ export default function App() {
         </div>
       </div>
 
+      {/* Coin Toast */}
+      <AnimatePresence>
+        {showCoinToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 20 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg"
+          >
+            <Coins size={20} />
+            <span>+1 TokCoin earned!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <div className="h-full w-full pt-0 lg:pt-16">
         {currentView === 'home' && (
@@ -646,7 +683,13 @@ export default function App() {
 
         {currentView === 'inbox' && (
           <div className="h-full w-full overflow-y-auto pb-20 scrollbar-hide bg-black">
-            <InboxView onClose={() => setCurrentView('home')} />
+            <InboxView 
+              onClose={() => setCurrentView('home')} 
+              onOpenMessages={(user) => {
+                if (user) setInitialMessageUser(user);
+                setIsMessagesOpen(true);
+              }}
+            />
           </div>
         )}
 
@@ -722,7 +765,11 @@ export default function App() {
       <AnimatePresence>
         {isMessagesOpen && (
           <MessagesView 
-            onClose={() => setIsMessagesOpen(false)} 
+            onClose={() => {
+              setIsMessagesOpen(false);
+              setInitialMessageUser(undefined);
+            }} 
+            initialUser={initialMessageUser}
           />
         )}
       </AnimatePresence>

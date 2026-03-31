@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, MessageCircle, Share2, Bookmark, Plus, Music, ChevronUp, ChevronDown, MoreHorizontal, CheckCircle, X, Send, User, Maximize2, Minimize2, ThumbsUp, ThumbsDown, Volume2, VolumeX, Languages } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, Music, ChevronUp, ChevronDown, MoreHorizontal, CheckCircle, X, Send, User, Maximize2, Minimize2, ThumbsUp, ThumbsDown, Volume2, VolumeX, Languages, Mail } from 'lucide-react';
 import { Video } from '../types';
 import { Comments } from './Comments';
 import { ShareModal } from './ShareModal';
@@ -13,6 +13,7 @@ interface VideoCardProps {
   onNext?: () => void;
   onLike?: (isLiked: boolean) => void;
   onCommentClick?: () => void;
+  onMessageClick?: (author: string) => void;
   loop?: boolean;
 }
 
@@ -23,6 +24,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   onNext, 
   onLike, 
   onCommentClick,
+  onMessageClick,
   loop = true
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -264,6 +266,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               <MessageCircle size={36} color="white" fill="white" fillOpacity={0.1} />
             </button>
             <span className="text-white text-[10px] font-bold mt-1 uppercase">{formatNumber(video.comments)}</span>
+          </div>
+
+          {/* Message Button */}
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onMessageClick?.(video.author);
+              }}
+              className="transition-transform active:scale-125"
+            >
+              <Mail size={36} color="white" fill="white" fillOpacity={0.1} />
+            </button>
+            <span className="text-white text-[10px] font-bold mt-1 uppercase">Chat</span>
           </div>
 
           {/* Share Button */}

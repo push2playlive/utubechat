@@ -72,7 +72,7 @@ const MOCK_NOTIFICATIONS = [
   },
 ];
 
-export function InboxView({ onClose }: InboxViewProps) {
+export function InboxView({ onClose, onOpenMessages }: { onClose: () => void, onOpenMessages: (user?: string) => void }) {
   const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -144,6 +144,7 @@ export function InboxView({ onClose }: InboxViewProps) {
               {MOCK_MESSAGES.map((msg) => (
                 <button
                   key={msg.id}
+                  onClick={() => onOpenMessages(msg.user)}
                   className="w-full p-4 flex items-center gap-4 hover:bg-white/5 transition-colors group"
                 >
                   <div className="relative">
