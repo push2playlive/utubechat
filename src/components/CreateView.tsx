@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Camera, Video, Upload, Check, Loader2, Music, Sparkles, Wand2, Scissors, Trash2, PlusCircle, GripVertical, ChevronRight, Play, Pause, Brain, Image as ImageIcon, Music2, FileVideo } from 'lucide-react';
+import { X, Camera, Video, Upload, Check, Loader2, Music, Sparkles, Wand2, Scissors, Trash2, PlusCircle, GripVertical, ChevronRight, Play, Pause, Brain, Image as ImageIcon, Music2, FileVideo, Radio } from 'lucide-react';
 import { generateMusic, generateImage, generateHQImage, analyzeVideo, hasSelectedKey, openKeySelector } from '../lib/gemini';
+import { PREDEFINED_EFFECTS } from '../constants';
+
+import { supabase } from '../lib/supabase';
 
 interface Clip {
   id: string;
@@ -9,15 +12,19 @@ interface Clip {
   start: number;
   end: number;
   duration: number;
+  effect?: string;
+  customEffectUrl?: string;
 }
 
 interface CreateViewProps {
   onClose: () => void;
-  onUpload: (videoData: { url: string; description: string }) => void;
+  onUpload: (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => void;
+  onLive?: () => void;
 }
 
-export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => {
+export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLive }) => {
   const [step, setStep] = useState<'capture' | 'edit' | 'details' | 'ai-tools'>('capture');
+  const [mode, setMode] = useState<'video' | 'live'>('video');
   const [isRecording, setIsRecording] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
   const [activeClipIndex, setActiveClipIndex] = useState(0);
@@ -25,6 +32,8 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
   const [isUploading, setIsUploading] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [showEffects, setShowEffects] = useState(false);
+  const [isUploadingEffect, setIsUploadingEffect] = useState(false);
   
   // AI Tools State
   const [isAILoading, setIsAILoading] = useState(false);
@@ -193,6 +202,65 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
     setActiveClipIndex(newIndex);
   };
 
+  const handleApplyEffect = (effectId: string) => {
+    const newClips = [...clips];
+    newClips[activeClipIndex] = { ...newClips[activeClipIndex], effect: effectId };
+    setClips(newClips);
+  };
+
+  const handleCustomEffectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/gif', 'image/jpeg'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a PNG, GIF, or JPEG file for the effect.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB.');
+      return;
+    }
+
+    setIsUploadingEffect(true);
+    try {
+      let url = URL.createObjectURL(file);
+
+      // If Supabase is configured, upload the file
+      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `effects/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('assets')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Error uploading to Supabase:', uploadError);
+        } else {
+          const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+          url = data.publicUrl;
+        }
+      }
+
+      const newClips = [...clips];
+      newClips[activeClipIndex] = { 
+        ...newClips[activeClipIndex], 
+        effect: 'custom',
+        customEffectUrl: url 
+      };
+      setClips(newClips);
+    } catch (err) {
+      console.error("Custom Effect Upload Error:", err);
+    } finally {
+      setIsUploadingEffect(false);
+    }
+  };
+
   const handleAIAction = async () => {
     if (!aiPrompt && activeAITool !== 'video-analysis') return;
     
@@ -258,7 +326,9 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
       // For now, we'll just send the first one or a placeholder
       onUpload({
         url: clips[0].url,
-        description: description
+        description: description,
+        effect: clips[0].effect,
+        customEffectUrl: clips[0].customEffectUrl
       });
     }
     setIsUploading(false);
@@ -272,7 +342,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
           <X size={28} />
         </button>
         {step === 'capture' && (
-          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/20">
+          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-[#9298a6]">
             <Music size={16} className="text-white" />
             <span className="text-white text-xs font-bold">Add Sound</span>
           </div>
@@ -295,13 +365,13 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
             {/* Camera Controls Overlay */}
             <div className="absolute right-4 top-24 flex flex-col gap-6">
               <button className="flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-white/20">
+                <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                   <Wand2 size={20} className="text-white" />
                 </div>
                 <span className="text-[10px] text-white">Effects</span>
               </button>
               <button className="flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-white/20">
+                <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                   <Sparkles size={20} className="text-white" />
                 </div>
                 <span className="text-[10px] text-white">Filters</span>
@@ -309,27 +379,56 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
             </div>
 
             {/* Bottom Controls */}
-            <div className="absolute bottom-12 left-0 right-0 flex items-center justify-around px-8">
-              <label className="flex flex-col items-center gap-1 cursor-pointer">
-                <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
-                  <Upload size={24} className="text-white" />
-                </div>
-                <span className="text-[10px] text-white">Upload</span>
-                <input type="file" accept="video/*" className="hidden" onChange={handleFileSelect} />
-              </label>
+            <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center gap-8">
+              {/* Mode Selector */}
+              <div className="flex items-center gap-8 text-white/60 text-sm font-bold">
+                <button 
+                  onClick={() => setMode('video')}
+                  className={`transition-all ${mode === 'video' ? 'text-white scale-110' : 'hover:text-white'}`}
+                >
+                  Video
+                </button>
+                <button 
+                  onClick={() => setMode('live')}
+                  className={`transition-all ${mode === 'live' ? 'text-white scale-110' : 'hover:text-white'}`}
+                >
+                  Live
+                </button>
+              </div>
 
-              <button 
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
-                  isRecording ? 'border-white scale-110' : 'border-amber-500'
-                }`}
-              >
-                <div className={`rounded-full transition-all ${
-                  isRecording ? 'w-8 h-8 bg-amber-500 rounded-sm' : 'w-16 h-16 bg-amber-500'
-                }`} />
-              </button>
+              <div className="flex items-center justify-around w-full px-8">
+                <label className={`flex flex-col items-center gap-1 cursor-pointer transition-opacity ${mode === 'live' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                  <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center border border-[#9298a6]">
+                    <Upload size={24} className="text-white" />
+                  </div>
+                  <span className="text-[10px] text-white">Upload</span>
+                  <input type="file" accept="video/*" className="hidden" onChange={handleFileSelect} />
+                </label>
 
-              <div className="w-12 h-12" /> {/* Spacer */}
+                {mode === 'video' ? (
+                  <button 
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all ${
+                      isRecording ? 'border-white scale-110' : 'border-amber-500'
+                    }`}
+                  >
+                    <div className={`rounded-full transition-all ${
+                      isRecording ? 'w-8 h-8 bg-amber-500 rounded-sm' : 'w-16 h-16 bg-amber-500'
+                    }`} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => onLive?.()}
+                    className="w-20 h-20 rounded-full border-4 border-red-600 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                  >
+                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                      <Radio size={24} className="text-white animate-pulse" />
+                    </div>
+                  </button>
+                )}
+
+                <div className="w-12 h-12" /> {/* Spacer */}
+              </div>
             </div>
           </div>
         )}
@@ -337,14 +436,27 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
         {step === 'edit' && clips.length > 0 && (
           <div className="h-full w-full flex flex-col bg-black">
             {/* Video Preview */}
-            <div className="flex-1 relative bg-gray-900 flex items-center justify-center">
+            <div className="flex-1 relative bg-gray-900 flex items-center justify-center overflow-hidden">
               <video 
                 ref={previewVideoRef}
                 src={clips[activeClipIndex].url} 
-                className="max-h-full max-w-full object-contain"
+                className="max-h-full max-w-full object-contain transition-all duration-300"
+                style={{ 
+                  filter: PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.filter || 'none'
+                }}
                 playsInline
                 onClick={() => setIsPlaying(!isPlaying)}
               />
+              
+              {clips[activeClipIndex].effect === 'custom' && clips[activeClipIndex].customEffectUrl && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <img 
+                    src={clips[activeClipIndex].customEffectUrl} 
+                    className="w-full h-full object-cover opacity-50 mix-blend-overlay"
+                    alt="Custom Effect"
+                  />
+                </div>
+              )}
               
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 {!isPlaying && (
@@ -366,10 +478,19 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
                   <span className="text-[10px] text-white">AI Tools</span>
                 </button>
                 <button 
+                  onClick={() => setShowEffects(true)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
+                    <Sparkles size={20} className="text-white" />
+                  </div>
+                  <span className="text-[10px] text-white">Effects</span>
+                </button>
+                <button 
                   onClick={handleSplit}
                   className="flex flex-col items-center gap-1"
                 >
-                  <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-white/20">
+                  <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                     <Scissors size={20} className="text-white" />
                   </div>
                   <span className="text-[10px] text-white">Split</span>
@@ -378,7 +499,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
                   onClick={() => handleDeleteClip(activeClipIndex)}
                   className="flex flex-col items-center gap-1"
                 >
-                  <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-white/20">
+                  <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                     <Trash2 size={20} className="text-white" />
                   </div>
                   <span className="text-[10px] text-white">Delete</span>
@@ -387,7 +508,90 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
             </div>
 
             {/* Timeline / Clip List */}
-            <div className="h-48 bg-gray-900 p-4 flex flex-col gap-4">
+            <div className="h-48 bg-gray-900 p-4 flex flex-col gap-4 relative">
+              <AnimatePresence>
+                {showEffects && (
+                  <motion.div 
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    className="absolute inset-0 bg-gray-900 z-20 p-4 flex flex-col gap-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-white font-bold text-sm">Visual Effects</span>
+                      <button onClick={() => setShowEffects(false)} className="text-gray-400">
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                      {PREDEFINED_EFFECTS.map(effect => (
+                        <button
+                          key={effect.id}
+                          onClick={() => handleApplyEffect(effect.id)}
+                          className={`flex flex-col items-center gap-2 shrink-0 ${
+                            clips[activeClipIndex].effect === effect.id ? 'text-amber-500' : 'text-gray-400'
+                          }`}
+                        >
+                          <div 
+                            className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-black flex items-center justify-center ${
+                              clips[activeClipIndex].effect === effect.id ? 'border-amber-500' : 'border-gray-800'
+                            }`}
+                          >
+                            <div 
+                              className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50"
+                              style={{ filter: effect.filter }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold">{effect.name}</span>
+                        </button>
+                      ))}
+                      <label className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group relative">
+                        <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center bg-gray-800 transition-all ${
+                          clips[activeClipIndex].effect === 'custom' ? 'border-amber-500 text-amber-500' : 'border-[#9298a6] text-gray-500 group-hover:border-white group-hover:text-white'
+                        }`}>
+                          {isUploadingEffect ? (
+                            <Loader2 className="animate-spin" size={24} />
+                          ) : clips[activeClipIndex].customEffectUrl ? (
+                            <img 
+                              src={clips[activeClipIndex].customEffectUrl} 
+                              className="w-full h-full object-cover rounded-lg" 
+                              alt="Custom"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <PlusCircle size={24} />
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold">
+                          {clips[activeClipIndex].effect === 'custom' ? 'Custom' : 'Upload'}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept="image/png,image/gif,image/jpeg" 
+                          className="hidden" 
+                          onChange={handleCustomEffectUpload} 
+                          disabled={isUploadingEffect}
+                        />
+                        {clips[activeClipIndex].effect === 'custom' && (
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const newClips = [...clips];
+                              newClips[activeClipIndex] = { ...newClips[activeClipIndex], effect: 'none', customEffectUrl: undefined };
+                              setClips(newClips);
+                            }}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </label>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {clips.map((clip, i) => (
                   <div 
@@ -425,7 +629,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
                 ))}
                 <button 
                   onClick={() => setStep('capture')}
-                  className="w-20 aspect-[3/4] rounded-lg bg-gray-800 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-700 text-gray-500 hover:text-white hover:border-white transition-all shrink-0"
+                  className="w-20 aspect-[3/4] rounded-lg bg-gray-800 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#9298a6] text-gray-500 hover:text-white hover:border-white transition-all shrink-0"
                 >
                   <PlusCircle size={24} />
                   <span className="text-[10px] font-bold">Add Clip</span>
@@ -502,7 +706,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
               <button 
                 onClick={() => { setActiveAITool('music'); setAIResult(null); }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  activeAITool === 'music' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-gray-800'
+                  activeAITool === 'music' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-[#9298a6]'
                 }`}
               >
                 <Music2 className="text-blue-400" />
@@ -511,7 +715,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
               <button 
                 onClick={() => { setActiveAITool('image'); setAIResult(null); }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  activeAITool === 'image' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-gray-800'
+                  activeAITool === 'image' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-[#9298a6]'
                 }`}
               >
                 <ImageIcon className="text-pink-400" />
@@ -520,7 +724,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
               <button 
                 onClick={() => { setActiveAITool('video-analysis'); setAIResult(null); }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  activeAITool === 'video-analysis' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-gray-800'
+                  activeAITool === 'video-analysis' ? 'bg-purple-600/20 border-purple-500' : 'bg-gray-900 border-[#9298a6]'
                 }`}
               >
                 <FileVideo className="text-green-400" />
@@ -530,7 +734,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
 
             {activeAITool && (
               <div className="flex-1 flex flex-col gap-6">
-                <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800">
+                <div className="bg-gray-900 rounded-2xl p-4 border border-[#9298a6]">
                   <textarea 
                     value={aiPrompt}
                     onChange={(e) => setAIPrompt(e.target.value)}
@@ -569,7 +773,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
                 </button>
 
                 {aiResult && (
-                  <div className="mt-4 bg-gray-900 rounded-2xl p-4 border border-gray-800 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="mt-4 bg-gray-900 rounded-2xl p-4 border border-[#9298a6] animate-in fade-in slide-in-from-bottom-4">
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">Result</p>
                     {activeAITool === 'music' && (
                       <audio src={aiResult} controls className="w-full" />
@@ -595,7 +799,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload }) => 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe your video..."
-                  className="w-full bg-transparent text-white border-b border-gray-800 focus:border-amber-500 outline-none resize-none h-32 text-lg"
+                  className="w-full bg-transparent text-white border-b border-[#9298a6] focus:border-amber-500 outline-none resize-none h-32 text-lg"
                 />
                 <div className="flex gap-2 mt-4">
                   <span className="text-amber-500 font-bold">#hashtags</span>

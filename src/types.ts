@@ -9,6 +9,8 @@ export interface Video {
   shares: number;
   isLiked: boolean;
   isFollowed: boolean;
+  effect?: string;
+  customEffectUrl?: string;
 }
 
 export interface User {

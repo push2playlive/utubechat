@@ -14,8 +14,8 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
       exit={{ opacity: 0, scale: 0.95 }}
       className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
     >
-      <div className="bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="p-6 flex items-center justify-between border-b border-white/5">
+      <div className="bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden border border-[#9298a6] shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="p-6 flex items-center justify-between border-b border-[#9298a6]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-pink-500 flex items-center justify-center text-white">
               <Heart size={24} />
@@ -43,7 +43,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
           </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-3">
+            <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
                 <Globe size={20} />
               </div>
@@ -53,7 +53,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
               </p>
             </div>
 
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-3">
+            <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">
                 <Coins size={20} />
               </div>
@@ -63,7 +63,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
               </p>
             </div>
 
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-3">
+            <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
                 <Zap size={20} />
               </div>
@@ -73,7 +73,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
               </p>
             </div>
 
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-3">
+            <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
                 <Shield size={20} />
               </div>
@@ -95,7 +95,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
                 { name: 'Voice2Fire', domain: 'voice2fire.com', desc: 'Voice-driven social engagement', icon: <Flame size={18} className="text-orange-400" /> },
                 { name: 'Push2Play', domain: 'push2play.live', desc: 'Live streaming & interactive events', icon: <Play size={18} className="text-pink-400" /> },
               ].map((site, i) => (
-                <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-colors cursor-pointer">
+                <div key={i} className="bg-white/5 p-4 rounded-2xl border border-[#9298a6] flex items-center justify-between group hover:bg-white/10 transition-colors cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
                       {site.icon}

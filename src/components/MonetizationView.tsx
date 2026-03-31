@@ -21,8 +21,8 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
       exit={{ opacity: 0, y: 20 }}
       className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
     >
-      <div className="bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="p-6 flex items-center justify-between border-b border-white/5">
+      <div className="bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden border border-[#9298a6] shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="p-6 flex items-center justify-between border-b border-[#9298a6]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-yellow-500 flex items-center justify-center text-black">
               <DollarSign size={24} />
@@ -69,7 +69,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                     'from-pink-500/20 to-transparent'
                   ];
                   return (
-                    <div key={i} className={`bg-gradient-to-r ${colors[i % colors.length]} p-5 rounded-3xl border border-white/10 flex items-center justify-between group hover:border-white/30 transition-all cursor-pointer`}>
+                    <div key={i} className={`bg-gradient-to-r ${colors[i % colors.length]} p-5 rounded-3xl border border-[#9298a6] flex items-center justify-between group hover:border-white/30 transition-all cursor-pointer`}>
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner overflow-hidden">
                           {item.logo ? (
@@ -90,7 +90,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                             <TrendingUp size={10} /> {earning?.growth || '0%'}
                           </div>
                         </div>
-                        <button className="bg-white/10 hover:bg-white text-white hover:text-black px-3 py-1 rounded-full text-[10px] font-bold transition-colors border border-white/10">
+                        <button className="bg-white/10 hover:bg-white text-white hover:text-black px-3 py-1 rounded-full text-[10px] font-bold transition-colors border border-[#9298a6]">
                           Launch App
                         </button>
                       </div>
@@ -106,16 +106,16 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
               <CheckCircle size={20} className="text-green-400" />
               Daily Earning Checklist
             </h3>
-            <div className="bg-white/5 rounded-3xl border border-white/5 overflow-hidden">
+            <div className="bg-white/5 rounded-3xl border border-[#9298a6] overflow-hidden">
               {[
                 { task: 'Visit utubechat.com', reward: 50, done: true },
                 { task: 'Share a video from voice2fire.com', reward: 30, done: false },
                 { task: 'Watch 10 mins on push2play.live', reward: 100, done: false },
                 { task: 'Refer a new partner supporter', reward: 500, done: false },
               ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 border-b border-white/5 last:border-0">
+                <div key={i} className="flex items-center justify-between p-4 border-b border-[#9298a6] last:border-0">
                   <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${item.done ? 'bg-green-500 border-green-500' : 'border-gray-600'}`}>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${item.done ? 'bg-green-500 border-green-500' : 'border-[#9298a6]'}`}>
                       {item.done && <CheckCircle size={12} className="text-white" />}
                     </div>
                     <span className={`text-sm ${item.done ? 'text-gray-500 line-through' : 'text-white'}`}>{item.task}</span>
@@ -130,7 +130,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
           </section>
 
           {/* Earning Strategy */}
-          <section className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
+          <section className="bg-white/5 p-6 rounded-3xl border border-[#9298a6] space-y-4">
             <h3 className="text-white font-bold">How to earn more?</h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">

@@ -43,7 +43,7 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
       <div className="max-w-4xl mx-auto w-full h-full flex flex-col p-6 overflow-y-auto scrollbar-hide">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center border border-green-500/30">
+            <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center border border-[#9298a6]">
               <Users className="text-green-400" size={24} />
             </div>
             <div>
@@ -57,11 +57,11 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
         </div>
 
         {/* Referral Link Card */}
-        <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-gray-800 mb-8">
+        <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-[#9298a6] mb-8">
           <h3 className="text-white font-bold mb-4 flex items-center gap-2">
             <LinkIcon size={18} className="text-blue-400" /> Your Referral Link
           </h3>
-          <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-gray-800 mb-4">
+          <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-[#9298a6] mb-4">
             <span className="text-gray-400 text-sm flex-1 truncate">{referralLink}</span>
             <button 
               onClick={copyToClipboard}
@@ -79,7 +79,7 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {tiers.map((tier, i) => (
-            <div key={i} className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 flex flex-col items-center text-center">
+            <div key={i} className="bg-gray-900/50 p-4 rounded-2xl border border-[#9298a6] flex flex-col items-center text-center">
               <div className={`w-10 h-10 rounded-full ${tier.color} flex items-center justify-center mb-3 shadow-lg`}>
                 <Award size={20} className="text-white" />
               </div>
@@ -100,7 +100,7 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
         
         <div className="space-y-3 mb-8">
           {referrals.map((ref, i) => (
-            <div key={i} className="bg-gray-900/30 p-4 rounded-2xl border border-gray-800 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
+            <div key={i} className="bg-gray-900/30 p-4 rounded-2xl border border-[#9298a6] flex items-center justify-between hover:bg-gray-800/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-white font-bold">
                   {ref.name.charAt(0)}
@@ -119,7 +119,7 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
         </div>
 
         {/* Call to Action */}
-        <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20 text-center">
+        <div className="bg-blue-500/10 p-6 rounded-3xl border border-[#9298a6] text-center">
           <h3 className="text-white font-bold mb-2">Ready to grow your network?</h3>
           <p className="text-gray-400 text-xs mb-6">The more friends you invite, the higher your earning potential becomes. Start sharing today!</p>
           <button 

@@ -79,7 +79,7 @@ export function InboxView({ onClose }: InboxViewProps) {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 bg-[#050505]">
+      <div className="p-4 border-b border-[#9298a6] bg-[#050505]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Inbox</h2>
           <div className="flex items-center gap-2">
@@ -100,12 +100,12 @@ export function InboxView({ onClose }: InboxViewProps) {
             placeholder="Search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
+            className="w-full bg-white/5 border border-[#9298a6] rounded-2xl py-3 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
           />
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 border-b border-white/5">
+        <div className="flex gap-4 border-b border-[#9298a6]">
           <button
             onClick={() => setActiveTab('messages')}
             className={`pb-3 px-2 text-sm font-bold transition-colors relative ${
@@ -139,7 +139,7 @@ export function InboxView({ onClose }: InboxViewProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="divide-y divide-white/5"
+              className="divide-y divide-[#9298a6]"
             >
               {MOCK_MESSAGES.map((msg) => (
                 <button
@@ -178,7 +178,7 @@ export function InboxView({ onClose }: InboxViewProps) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="divide-y divide-white/5"
+              className="divide-y divide-[#9298a6]"
             >
               {MOCK_NOTIFICATIONS.map((notif) => (
                 <div key={notif.id} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors">

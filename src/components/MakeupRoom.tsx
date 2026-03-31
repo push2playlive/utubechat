@@ -111,14 +111,14 @@ export const MakeupRoom: React.FC<MakeupRoomProps> = ({ onClose }) => {
         )}
 
         {/* Tip */}
-        <div className="absolute bottom-40 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-[10px] text-white border border-white/10">
+        <div className="absolute bottom-40 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-[10px] text-white border border-[#9298a6]">
           <Info size={12} className="text-blue-400" />
           <span>Position your face in the center for best results</span>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-black/90 backdrop-blur-xl p-6 rounded-t-[32px] border-t border-white/10">
+      <div className="bg-black/90 backdrop-blur-xl p-6 rounded-t-[32px] border-t border-[#9298a6]">
         {/* Tabs */}
         <div className="flex gap-4 mb-6">
           <button 
@@ -162,7 +162,7 @@ export const MakeupRoom: React.FC<MakeupRoomProps> = ({ onClose }) => {
                 className="flex flex-col items-center gap-2 min-w-[70px]"
               >
                 <div 
-                  className={`w-14 h-14 rounded-full border-2 ${activeLipstick.id === lipstick.id ? 'border-white scale-110' : 'border-white/10'} transition-all flex items-center justify-center`}
+                  className={`w-14 h-14 rounded-full border-2 ${activeLipstick.id === lipstick.id ? 'border-white scale-110' : 'border-[#9298a6]'} transition-all flex items-center justify-center`}
                   style={{ backgroundColor: lipstick.color }}
                 >
                   {lipstick.id === 'none' && <RefreshCw size={20} className="text-white/40" />}

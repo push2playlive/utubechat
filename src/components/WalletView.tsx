@@ -38,7 +38,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
       <div className="max-w-4xl mx-auto w-full h-full flex flex-col p-6">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-[#9298a6]">
               <Wallet className="text-blue-400" size={24} />
             </div>
             <div>
@@ -53,7 +53,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Main Balance Card */}
-          <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-gray-800 relative overflow-hidden">
+          <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-[#9298a6] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32" />
             
             <div className="flex justify-between items-start mb-10">
@@ -73,20 +73,20 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
               <button className="flex-1 bg-white text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2">
                 <ArrowDownLeft size={18} /> Deposit
               </button>
-              <button className="flex-1 bg-gray-800 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 border border-gray-700">
+              <button className="flex-1 bg-gray-800 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 border border-[#9298a6]">
                 <ArrowUpRight size={18} /> Withdraw
               </button>
             </div>
           </div>
 
           {/* Swap Card */}
-          <div className="bg-gray-900/50 p-6 rounded-3xl border border-gray-800 flex flex-col">
+          <div className="bg-gray-900/50 p-6 rounded-3xl border border-[#9298a6] flex flex-col">
             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
               <RefreshCw size={18} className="text-blue-400" /> Quick Swap
             </h3>
             
             <div className="space-y-4 flex-1">
-              <div className="bg-black/40 p-3 rounded-xl border border-gray-800">
+              <div className="bg-black/40 p-3 rounded-xl border border-[#9298a6]">
                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">From TokCoins</p>
                 <input 
                   type="number" 
@@ -103,7 +103,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
                 </div>
               </div>
 
-              <div className="bg-black/40 p-3 rounded-xl border border-gray-800">
+              <div className="bg-black/40 p-3 rounded-xl border border-[#9298a6]">
                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">To Crypto</p>
                 <select 
                   value={selectedCrypto}
@@ -132,9 +132,9 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
           <h3 className="text-white font-bold mb-4">Your Assets</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {cryptoAssets.map((asset, i) => (
-              <div key={i} className="bg-gray-900/30 p-4 rounded-2xl border border-gray-800 flex items-center justify-between hover:bg-gray-800/50 transition-colors cursor-pointer group">
+              <div key={i} className="bg-gray-900/30 p-4 rounded-2xl border border-[#9298a6] flex items-center justify-between hover:bg-gray-800/50 transition-colors cursor-pointer group">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center p-2 border border-gray-800">
+                  <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center p-2 border border-[#9298a6]">
                     <img src={asset.icon} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                   </div>
                   <div>
@@ -152,7 +152,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
             ))}
           </div>
 
-          <div className="mt-8 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 flex gap-3">
+          <div className="mt-8 p-4 bg-blue-500/5 rounded-2xl border border-[#9298a6] flex gap-3">
             <Info className="text-blue-400 shrink-0" size={20} />
             <p className="text-[11px] text-gray-400 leading-relaxed">
               Withdrawals are processed within 24 hours. Ensure your external wallet address is verified in settings before initiating a transfer of XRP, BTC, or SOL.

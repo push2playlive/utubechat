@@ -292,7 +292,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onClose }) => {
             <button 
               onClick={handleTranscription}
               disabled={isRecording}
-              className="bg-gray-800 text-white py-4 rounded-2xl font-bold flex flex-col items-center gap-2 border border-gray-700"
+              className="bg-gray-800 text-white py-4 rounded-2xl font-bold flex flex-col items-center gap-2 border border-[#9298a6]"
             >
               {isRecording ? <Loader2 className="animate-spin" /> : <MessageSquare size={24} />}
               <span className="text-xs">Voice to Text</span>

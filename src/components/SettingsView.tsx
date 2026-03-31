@@ -44,7 +44,7 @@ export function SettingsView({ onClose }: SettingsViewProps) {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#050505]">
+      <div className="p-4 border-b border-[#9298a6] flex items-center justify-between bg-[#050505]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gray-900 rounded-xl">
             <Zap size={20} className="text-yellow-500" />
@@ -62,11 +62,11 @@ export function SettingsView({ onClose }: SettingsViewProps) {
             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-2">
               {group.title}
             </h3>
-            <div className="bg-gray-900/50 rounded-3xl border border-white/5 overflow-hidden">
+            <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] overflow-hidden">
               {group.items.map((item, j) => (
                 <button
                   key={j}
-                  className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                  className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors border-b border-[#9298a6] last:border-0"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center">

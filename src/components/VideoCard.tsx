@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Heart, MessageCircle, Share2, Bookmark, Plus, Music, ChevronUp, ChevronDown, MoreHorizontal, CheckCircle, X, Send, User, Maximize2, Minimize2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Video } from '../types';
 import { Comments } from './Comments';
+import { ShareModal } from './ShareModal';
+import { PREDEFINED_EFFECTS } from '../constants';
 
 interface VideoCardProps {
   video: Video;
@@ -10,9 +12,10 @@ interface VideoCardProps {
   onPrev?: () => void;
   onNext?: () => void;
   onLike?: (isLiked: boolean) => void;
+  onCommentClick?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, onNext, onLike }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, onNext, onLike, onCommentClick }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLiked, setIsLiked] = useState(video.isLiked);
   const [likes, setLikes] = useState(video.likes);
@@ -20,20 +23,23 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
   const [showHeart, setShowHeart] = useState(false);
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
   const [showComments, setShowComments] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   useEffect(() => {
     if (videoRef.current) {
       if (isActive) {
         videoRef.current.play().catch(err => console.error("Video play failed", err));
+        videoRef.current.playbackRate = playbackRate;
       } else {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
       }
     }
-  }, [isActive]);
+  }, [isActive, playbackRate]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (!isLiked) {
@@ -58,6 +64,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
     setIsFollowed(!isFollowed);
   };
 
+  const cyclePlaybackRate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rates = [0.5, 1, 2];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextIndex = (currentIndex + 1) % rates.length;
+    setPlaybackRate(rates[nextIndex]);
+  };
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -79,12 +93,25 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
       <video
         ref={videoRef}
         src={video.url}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-cover transition-all duration-300"
+        style={{ 
+          filter: PREDEFINED_EFFECTS.find(e => e.id === video.effect)?.filter || 'none'
+        }}
         loop
         playsInline
         muted={false}
         onTimeUpdate={handleTimeUpdate}
       />
+
+      {video.effect === 'custom' && video.customEffectUrl && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          <img 
+            src={video.customEffectUrl} 
+            className="w-full h-full object-cover opacity-50 mix-blend-overlay"
+            alt="Custom Effect"
+          />
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/20 z-20">
@@ -102,7 +129,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
-            className="absolute top-6 right-6 z-[100] w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60 transition-colors"
+            className="absolute top-6 right-6 z-[100] w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6] hover:bg-black/60 transition-colors"
           >
             <X size={24} />
           </motion.button>
@@ -129,7 +156,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
         <div className="absolute right-4 bottom-20 flex flex-col items-center gap-4 z-10">
           {/* User Profile */}
           <div className="relative mb-2">
-            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-800">
+            <div className="w-12 h-12 rounded-full border-2 border-[#9298a6] overflow-hidden bg-gray-800">
               <img 
                 src={`https://picsum.photos/seed/${video.author}/100/100`} 
                 alt={video.author}
@@ -189,7 +216,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
           {/* Comments Button */}
           <div className="flex flex-col items-center">
             <button 
-              onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setShowComments(true); 
+                onCommentClick?.();
+              }}
               className="transition-transform active:scale-125"
             >
               <MessageCircle size={36} color="white" fill="white" fillOpacity={0.1} />
@@ -199,7 +230,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
 
           {/* Share Button */}
           <div className="flex flex-col items-center">
-            <button className="transition-transform active:scale-125">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
+              className="transition-transform active:scale-125"
+            >
               <Share2 size={36} color="white" fill="white" fillOpacity={0.1} />
             </button>
             <span className="text-white text-[10px] font-bold mt-1 uppercase">{formatNumber(video.shares)}</span>
@@ -232,6 +266,17 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
             <span className="text-white text-[10px] font-bold mt-1 uppercase">{isBookmarked ? 'Saved' : 'Save'}</span>
           </div>
 
+          {/* Playback Speed Control */}
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={cyclePlaybackRate}
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110 border border-[#9298a6]"
+            >
+              <span className="text-white text-xs font-bold">{playbackRate}x</span>
+            </button>
+            <span className="text-white text-[10px] font-bold mt-1 uppercase">Speed</span>
+          </div>
+
           {/* More Button */}
           <div className="flex flex-col items-center">
             <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110">
@@ -243,7 +288,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="w-10 h-10 rounded-full bg-gray-900 border-4 border-gray-800 flex items-center justify-center mt-2"
+            className="w-10 h-10 rounded-full bg-gray-900 border-4 border-[#9298a6] flex items-center justify-center mt-2"
           >
             <div className="w-3 h-3 rounded-full bg-gray-600" />
           </motion.div>
@@ -260,7 +305,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
                 onClick={toggleFollow}
                 className={`px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${
                   isFollowed 
-                    ? 'bg-white/10 text-white border border-white/20' 
+                    ? 'bg-white/10 text-white border border-[#9298a6]' 
                     : 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
                 }`}
               >
@@ -318,6 +363,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
           </>
         )}
       </AnimatePresence>
+      {/* Share Modal */}
+      <ShareModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)}
+        videoUrl={window.location.origin + '?v=' + video.id}
+        videoTitle={video.description}
+      />
     </div>
   );
 };

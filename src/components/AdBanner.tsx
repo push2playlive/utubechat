@@ -41,7 +41,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ type }) => {
 
   if (type === 'sidebar') {
     return (
-      <div className={`w-full rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br ${ad.color} p-4 relative group cursor-pointer`}>
+      <div className={`w-full rounded-2xl overflow-hidden border border-[#9298a6] bg-gradient-to-br ${ad.color} p-4 relative group cursor-pointer`}>
         <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] text-white/60 uppercase tracking-widest font-bold">
           Ad <Info size={8} />
         </div>
@@ -55,7 +55,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ type }) => {
   }
 
   return (
-    <div className="w-full bg-gray-900/50 rounded-3xl border border-gray-800 p-6 flex flex-col md:flex-row gap-6 items-center">
+    <div className="w-full bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6 flex flex-col md:flex-row gap-6 items-center">
       <div className="w-full md:w-1/3 aspect-video rounded-2xl overflow-hidden relative">
         <img src={ad.image} alt="Ad" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] text-white font-bold uppercase">Sponsored</div>

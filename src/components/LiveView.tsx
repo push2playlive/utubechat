@@ -109,12 +109,12 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
               <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 animate-pulse">
                 <Radio size={10} /> LIVE
               </div>
-              <div className="bg-black/40 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-2 border border-white/10">
+              <div className="bg-black/40 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-2 border border-[#9298a6]">
                 <Users size={12} className="text-white" />
                 <span className="text-white text-xs font-bold">{viewers}</span>
               </div>
             </div>
-            <button onClick={onClose} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10">
+            <button onClick={onClose} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6]">
               <X size={20} />
             </button>
           </div>
@@ -133,7 +133,7 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
 
             {/* Interaction Bar */}
             <div className="flex items-center gap-3">
-              <form onSubmit={handleSendComment} className="flex-1 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+              <form onSubmit={handleSendComment} className="flex-1 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full px-4 py-2 border border-[#9298a6]">
                 <input 
                   type="text" 
                   value={newComment}
@@ -146,12 +146,12 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
                 </button>
               </form>
               
-              <button onClick={() => setLikes(prev => prev + 1)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 relative">
+              <button onClick={() => setLikes(prev => prev + 1)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6] relative">
                 <Heart size={20} className={likes > 1240 ? 'text-red-500 fill-red-500' : ''} />
                 <span className="absolute -top-2 -right-2 bg-red-600 text-[8px] px-1 rounded-full">{likes}</span>
               </button>
               
-              <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10">
+              <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6]">
                 <Gift size={20} className="text-yellow-400" />
               </button>
 

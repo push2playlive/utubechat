@@ -17,9 +17,10 @@ import { InboxView } from './components/InboxView';
 import { SettingsView } from './components/SettingsView';
 import { AIAssistant } from './components/AIAssistant';
 import { Comments } from './components/Comments';
+import { DiscoverView } from './components/DiscoverView';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone } from 'lucide-react';
+import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -34,11 +35,13 @@ export default function App() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
   const [user, setUser] = useState<User>(CURRENT_USER);
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS);
   const [showCoinToast, setShowCoinToast] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const [showHeart, setShowHeart] = useState({ show: false, x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +82,7 @@ export default function App() {
     }
   };
 
-  const handleVideoUpload = (videoData: { url: string; description: string }) => {
+  const handleVideoUpload = (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => {
     const newVideo: Video = {
       id: Date.now().toString(),
       url: videoData.url,
@@ -91,6 +94,8 @@ export default function App() {
       shares: 0,
       isLiked: false,
       isFollowed: false,
+      effect: videoData.effect,
+      customEffectUrl: videoData.customEffectUrl,
     };
     
     setVideos([newVideo, ...videos]);
@@ -131,12 +136,12 @@ export default function App() {
   const renderHome = () => (
     <div className="h-full w-full flex bg-[#050505]">
       {/* Left Sidebar (Desktop Only) */}
-      <div className="hidden lg:flex flex-col w-80 border-r border-gray-800 p-6 pt-20 gap-6">
+      <div className="hidden lg:flex flex-col w-80 border-r border-[#9298a6] p-6 pt-20 gap-6">
         <div className="flex gap-2">
-          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-gray-700 flex items-center justify-center text-gray-500 text-xs text-center p-4">
+          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-[#9298a6] flex items-center justify-center text-gray-500 text-xs text-center p-4">
             Advertise here
           </div>
-          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-gray-700 flex items-center justify-center text-gray-500 text-xs text-center p-4">
+          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-[#9298a6] flex items-center justify-center text-gray-500 text-xs text-center p-4">
             Advertise here
           </div>
         </div>
@@ -146,7 +151,7 @@ export default function App() {
           <button className="flex-1 py-2 text-sm font-bold text-black bg-white rounded-md shadow-lg">Following</button>
         </div>
 
-        <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
+        <div className="bg-gray-900/50 rounded-xl p-4 border border-[#9298a6]">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold">U</div>
             <div>
@@ -184,34 +189,54 @@ export default function App() {
             onPrev={() => index > 0 && scrollToVideo(index - 1)}
             onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
             onLike={(isLiked) => handleLike(video.id, isLiked)}
+            onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
           />
         ))}
       </div>
 
       {/* Right Sidebar (Desktop Only) */}
-      <div className="hidden xl:flex flex-col w-80 border-l border-gray-800 px-6 pt-20 pb-24 gap-6">
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 shrink-0">
-          <h3 className="text-white font-bold text-sm mb-4">Trending</h3>
-          <div className="space-y-4">
-            {['#faith', '#jesus', '#gulfport', '#dance'].map(tag => (
-              <div key={tag} className="text-gray-400 text-xs hover:text-white cursor-pointer">
-                {tag}
+      <AnimatePresence>
+        {isCommentsSidebarOpen && (
+          <motion.div 
+            initial={{ x: 320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 320, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="hidden xl:flex flex-col w-80 border-l border-[#9298a6] px-6 pt-20 pb-24 gap-6 bg-[#050505] z-40"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-white font-bold text-sm">Comments</h3>
+              <button 
+                onClick={() => setIsCommentsSidebarOpen(false)}
+                className="text-gray-500 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-4 border border-[#9298a6] shrink-0">
+              <h3 className="text-white font-bold text-xs mb-4">Trending</h3>
+              <div className="space-y-4">
+                {['#faith', '#jesus', '#gulfport', '#dance'].map(tag => (
+                  <div key={tag} className="text-gray-400 text-[10px] hover:text-white cursor-pointer">
+                    {tag}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="flex-1 bg-gray-900 rounded-xl p-4 border border-gray-800 overflow-hidden flex flex-col">
-          <Comments isSidebar />
-        </div>
-      </div>
+            <div className="flex-1 bg-gray-900 rounded-xl p-4 border border-[#9298a6] overflow-hidden flex flex-col">
+              <Comments isSidebar />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 
   const renderProfile = () => (
     <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
       <div className="flex flex-col items-center mt-8">
-        <div className="w-24 h-24 rounded-full border-2 border-gray-800 overflow-hidden mb-4">
+        <div className="w-24 h-24 rounded-full border-2 border-[#9298a6] overflow-hidden mb-4">
           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         </div>
         <h2 className="text-xl font-bold">{user.name}</h2>
@@ -239,7 +264,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-gray-800 mb-8">
+        <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-[#9298a6] mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Coins className="text-yellow-500" size={20} />
@@ -289,7 +314,7 @@ export default function App() {
           { name: 'Exclusive Badge', price: 1500, img: 'badge' },
           { name: 'Mentor Session', price: 2000, img: 'mentor' },
         ].map((item, i) => (
-          <div key={i} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+          <div key={i} className="bg-gray-900 rounded-xl overflow-hidden border border-[#9298a6]">
             <div className="aspect-square bg-gray-800">
               <img 
                 src={`https://picsum.photos/seed/${item.img}/300/300`} 
@@ -466,7 +491,7 @@ export default function App() {
                   })}
                 </div>
 
-                <div className="mt-6 border-t border-white/5 pt-4">
+                <div className="mt-6 border-t border-[#9298a6] pt-4">
                   <button className="flex items-center justify-between text-white p-3 rounded-lg hover:bg-gray-800 transition-colors w-full">
                     <div className="flex items-center gap-3">
                       <HelpCircle size={20} className="text-purple-400" />
@@ -474,7 +499,7 @@ export default function App() {
                     </div>
                     <ChevronRight size={16} className="text-gray-600" />
                   </button>
-                  <div className="h-px bg-gray-800 my-4" />
+                  <div className="h-px bg-[#9298a6] my-4" />
                   <button className="flex items-center gap-3 text-red-400 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                     <LogOut size={20} />
                     <span>Log Out</span>
@@ -483,7 +508,7 @@ export default function App() {
               </nav>
 
               <div className="absolute bottom-10 left-6 right-6">
-                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-yellow-500/30">
+                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-[#9298a6]">
                   <p className="text-yellow-500 text-xs font-bold mb-1 uppercase tracking-wider">Balance</p>
                   <div className="flex items-center gap-2">
                     <Coins className="text-yellow-500" size={24} />
@@ -497,10 +522,22 @@ export default function App() {
       </AnimatePresence>
 
       {/* Top Header (Desktop Only) */}
-      <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-[#050505] border-b border-gray-800 z-[55] items-center px-6 justify-between">
+      <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-[#050505] border-b border-[#9298a6] z-[55] items-center px-6 justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
-            <VideoIcon size={24} color="black" />
+          <div 
+            className="w-8 h-8 rounded-full bg-amber-500 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center"
+            style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png')` }}
+          >
+            <img 
+              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png" 
+              alt="TokCoin Logo" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.style.opacity = '0';
+              }}
+            />
           </div>
           <span className="text-white font-bold text-xl">TokCoin</span>
         </div>
@@ -508,13 +545,29 @@ export default function App() {
         <div className="flex-1 max-w-2xl mx-12 relative">
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchQuery.trim()) {
+                setCurrentView('discover');
+              }
+            }}
             placeholder="Search videos, users..." 
-            className="w-full bg-gray-900 border border-gray-800 rounded-full py-2 px-6 text-white outline-none focus:border-gray-600"
+            className="w-full bg-gray-900 border border-[#9298a6] rounded-full py-2 px-6 text-white outline-none focus:border-amber-500 transition-colors"
           />
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+          <Search 
+            className={`absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer transition-colors ${searchQuery.trim() ? 'text-amber-500' : 'text-gray-500'}`} 
+            size={18} 
+            onClick={() => searchQuery.trim() && setCurrentView('discover')}
+          />
         </div>
 
         <div className="flex items-center gap-6 text-gray-400">
+          <Radio 
+            size={22} 
+            className={`cursor-pointer hover:text-white transition-colors ${isLiveOpen ? 'text-red-500' : ''}`} 
+            onClick={() => setIsLiveOpen(true)}
+          />
           <Megaphone 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'partners' ? 'text-amber-500' : ''}`} 
@@ -542,7 +595,7 @@ export default function App() {
           />
           <div 
             className={`w-8 h-8 rounded-full bg-gray-800 overflow-hidden border cursor-pointer transition-all ${
-              currentView === 'profile' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-gray-700 hover:border-gray-500'
+              currentView === 'profile' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-[#9298a6] hover:border-[#9298a6]'
             }`}
             onClick={() => setCurrentView('profile')}
           >
@@ -559,6 +612,7 @@ export default function App() {
               activeTab={activeTab} 
               onTabChange={setActiveTab} 
               onLiveClick={() => setIsLiveOpen(true)}
+              onSearchClick={() => setCurrentView('discover')}
             />
             {renderHome()}
           </>
@@ -569,6 +623,10 @@ export default function App() {
           <CreateView 
             onClose={() => setCurrentView('home')} 
             onUpload={handleVideoUpload} 
+            onLive={() => {
+              setIsLiveOpen(true);
+              setCurrentView('home');
+            }}
           />
         )}
         
@@ -598,11 +656,13 @@ export default function App() {
         )}
         
         {currentView === 'discover' && (
-          <div className="h-full w-full flex items-center justify-center bg-black text-white">
-            <p className="text-gray-500 italic uppercase tracking-widest text-sm">
-              {currentView} View Coming Soon
-            </p>
-          </div>
+          <DiscoverView 
+            initialQuery={searchQuery}
+            onClose={() => {
+              setCurrentView('home');
+              setSearchQuery('');
+            }} 
+          />
         )}
       </div>
 

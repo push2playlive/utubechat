@@ -60,7 +60,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#050505]">
+      <div className="p-4 border-b border-[#9298a6] flex items-center justify-between bg-[#050505]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
             <Brain size={24} className="text-white" />
@@ -79,7 +79,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
         {!selectedMentor ? (
           <>
             {/* Intro Section */}
-            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 p-6 rounded-3xl border border-purple-500/20">
+            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 p-6 rounded-3xl border border-[#9298a6]">
               <h3 className="text-xl font-bold text-white mb-2">Meet Your Success Agents</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
                 Our AI Mentors are here to help you navigate the TokCoin ecosystem. 
@@ -118,7 +118,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
                   White Label Solutions
                 </h3>
               </div>
-              <div className="bg-gray-900/50 p-5 rounded-3xl border border-white/5">
+              <div className="bg-gray-900/50 p-5 rounded-3xl border border-[#9298a6]">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-500">
                     <Award size={24} />
@@ -174,7 +174,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
               ))}
             </div>
 
-            <div className="mt-auto p-4 bg-[#050505] border-t border-white/10 -mx-4 -mb-4">
+            <div className="mt-auto p-4 bg-[#050505] border-t border-[#9298a6] -mx-4 -mb-4">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -182,7 +182,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
                   onChange={(e) => setChatMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder={`Message ${selectedMentor.name}...`}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500"
+                  className="flex-1 bg-white/5 border border-[#9298a6] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500"
                 />
                 <button 
                   onClick={handleSendMessage}

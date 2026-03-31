@@ -119,3 +119,60 @@ export const CURRENT_USER: User = {
   likes: 5600,
   avatar: 'https://picsum.photos/seed/johndoe/200/200',
 };
+
+export const MOCK_USERS: User[] = [
+  CURRENT_USER,
+  {
+    id: 'user_2',
+    name: 'Voice2Fire Official',
+    username: '@voice2fire_official',
+    bio: 'Be Paid To Be Social! 🔥',
+    coins: 1000000,
+    followers: 500000,
+    following: 10,
+    likes: 2500000,
+    avatar: 'https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png',
+  },
+  {
+    id: 'user_3',
+    name: 'UTubeChat Official',
+    username: '@utubechat_official',
+    bio: 'Get Paid to be Social with UTubeChat!',
+    coins: 850000,
+    followers: 420000,
+    following: 5,
+    likes: 1800000,
+    avatar: 'https://picsum.photos/seed/utubechat/200/200',
+  },
+  {
+    id: 'user_4',
+    name: 'Neon Dancer',
+    username: '@neon_dancer',
+    bio: 'Dancing in the neon lights! 💃',
+    coins: 5000,
+    followers: 15000,
+    following: 200,
+    likes: 45000,
+    avatar: 'https://picsum.photos/seed/neon/200/200',
+  },
+  {
+    id: 'user_5',
+    name: 'Nature Lover',
+    username: '@nature_lover',
+    bio: 'Spring is finally here! 🌸',
+    coins: 2000,
+    followers: 8000,
+    following: 150,
+    likes: 12000,
+    avatar: 'https://picsum.photos/seed/nature/200/200',
+  }
+];
+
+export const PREDEFINED_EFFECTS = [
+  { id: 'none', name: 'None', filter: 'none' },
+  { id: 'vintage', name: 'Vintage', filter: 'sepia(0.5) contrast(1.2) brightness(0.9)' },
+  { id: 'bw', name: 'B&W', filter: 'grayscale(1)' },
+  { id: 'glitch', name: 'Glitch', filter: 'hue-rotate(90deg) saturate(2)' },
+  { id: 'neon', name: 'Neon', filter: 'brightness(1.5) saturate(1.5) contrast(1.1)' },
+  { id: 'vhs', name: 'VHS', filter: 'contrast(0.8) brightness(1.1) saturate(0.5) blur(0.5px)' },
+];

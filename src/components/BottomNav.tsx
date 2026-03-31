@@ -18,7 +18,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
   ];
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 h-20 bg-black/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-around px-4 z-50 w-[95%] max-w-lg shadow-2xl shadow-black/50">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 h-20 bg-black/80 backdrop-blur-xl border border-[#9298a6] rounded-full flex items-center justify-around px-4 z-50 w-[95%] max-w-lg shadow-2xl shadow-black/50">
       {navItems.map((item) => {
         const isActive = currentView === item.view;
         
