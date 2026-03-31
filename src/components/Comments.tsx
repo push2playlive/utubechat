@@ -27,6 +27,15 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete, onReply })
   const [hearts, setHearts] = useState(comment.hearts);
   const [vote, setVote] = useState<'like' | 'dislike' | null>(null);
   const [isHearted, setIsHearted] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
+
+  const requestPermission = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setIsNotifying(true);
+    }
+  };
 
   const handleLike = () => {
     if (vote === 'like') {
@@ -124,6 +133,16 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete, onReply })
           >
             <Reply size={10} /> Reply
           </button>
+          <button 
+            onClick={requestPermission}
+            className={`text-[10px] transition-colors flex items-center gap-1 ${
+              isNotifying ? 'text-amber-500' : 'text-gray-500 hover:text-amber-500'
+            }`}
+            title="Notify me of replies"
+          >
+            <Bell size={10} fill={isNotifying ? 'currentColor' : 'none'} /> 
+            {isNotifying ? 'Notifying' : 'Notify'}
+          </button>
         </div>
       </div>
     </div>
@@ -146,6 +165,19 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
   const showPushNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
+
+    // Real Browser Notification
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("Push2Play Live", {
+          body: msg,
+          icon: "https://picsum.photos/seed/push2play/100/100",
+          silent: false,
+        });
+      } catch (err) {
+        console.error("Notification error:", err);
+      }
+    }
   };
 
   const handleSendComment = (e?: React.FormEvent, content?: string, type: 'text' | 'gif' = 'text') => {

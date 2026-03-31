@@ -33,6 +33,7 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 45000,
     isLiked: false,
     isFollowed: true,
+    captions: ['Welcome to Voice2Fire!', 'Be paid to be social.', 'Join the revolution today!']
   },
   {
     id: 'utc_ad_1',
@@ -45,6 +46,7 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 67000,
     isLiked: false,
     isFollowed: true,
+    captions: ['UTubeChat is here!', 'Earn while you chat.', '5-Tier Affiliate Program!']
   },
   {
     id: 'v2f_ad_2',
@@ -57,10 +59,11 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 23000,
     isLiked: false,
     isFollowed: true,
+    captions: ['Build your network.', 'Passive income is real.', 'Sign up at voice2fire.com!']
   },
   {
     id: '1',
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-light-dancing-alone-34887-large.mp4',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
     author: '@neon_dancer',
     description: 'Dancing in the neon lights! Supporting push2play.live 🚀 #neon #dance #vibes',
     song: 'Neon Nights - Original Sound',
@@ -69,10 +72,11 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 120,
     isLiked: false,
     isFollowed: false,
+    captions: ['Neon lights everywhere.', 'Feel the rhythm.', 'Push2Play is live!']
   },
   {
     id: '4',
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-man-dancing-under-a-street-lamp-at-night-34884-large.mp4',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4',
     author: '@night_mover',
     description: 'Late night sessions on utubechat.com. 10 toes down for the lord! 🙏 #faith #dance #night',
     song: 'Jesus - Joe Nester',
@@ -81,10 +85,11 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 8900,
     isLiked: false,
     isFollowed: false,
+    captions: ['Late night faith.', '10 toes down.', 'UTubeChat sessions.']
   },
   {
     id: '5',
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-with-lights-and-smoke-34881-large.mp4',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_2.mp4',
     author: '@faith_live',
     description: 'Gulfport MS was 10 toes down for the Lord! ✝️⚔️🛡️ Follow us on voice2fire.com #gulfport #faith #concert',
     song: 'Jesus - Live Performance',
@@ -93,10 +98,11 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 4500,
     isLiked: true,
     isFollowed: true,
+    captions: ['Gulfport MS for the Lord.', 'Faith and music.', 'Follow Voice2Fire.']
   },
   {
     id: '2',
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
     author: '@nature_lover',
     description: 'Spring is finally here! 🌸 #nature #spring #beauty',
     song: 'Nature Sounds - Relaxing',
@@ -105,6 +111,7 @@ export const MOCK_VIDEOS: Video[] = [
     shares: 45,
     isLiked: true,
     isFollowed: true,
+    captions: ['Spring is here!', 'Nature is beautiful.', 'Relax and enjoy.']
   },
 ];
 

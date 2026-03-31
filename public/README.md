@@ -1,0 +1,2 @@
+# Static Assets
+Place images, icons, and other static files here.

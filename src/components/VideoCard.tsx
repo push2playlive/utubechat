@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, MessageCircle, Share2, Bookmark, Plus, Music, ChevronUp, ChevronDown, MoreHorizontal, CheckCircle, X, Send, User, Maximize2, Minimize2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, Music, ChevronUp, ChevronDown, MoreHorizontal, CheckCircle, X, Send, User, Maximize2, Minimize2, ThumbsUp, ThumbsDown, Volume2, VolumeX, Languages } from 'lucide-react';
 import { Video } from '../types';
 import { Comments } from './Comments';
 import { ShareModal } from './ShareModal';
@@ -13,9 +13,18 @@ interface VideoCardProps {
   onNext?: () => void;
   onLike?: (isLiked: boolean) => void;
   onCommentClick?: () => void;
+  loop?: boolean;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, onNext, onLike, onCommentClick }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ 
+  video, 
+  isActive, 
+  onPrev, 
+  onNext, 
+  onLike, 
+  onCommentClick,
+  loop = true
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLiked, setIsLiked] = useState(video.isLiked);
   const [likes, setLikes] = useState(video.likes);
@@ -28,6 +37,27 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
   const [progress, setProgress] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showCaptions, setShowCaptions] = useState(true);
+  const [currentCaption, setCurrentCaption] = useState('');
+
+  useEffect(() => {
+    if (videoRef.current && video.captions && showCaptions) {
+      const videoElement = videoRef.current;
+      const handleTimeUpdate = () => {
+        const duration = videoElement.duration;
+        const currentTime = videoElement.currentTime;
+        const captionIndex = Math.floor((currentTime / duration) * video.captions!.length);
+        if (video.captions![captionIndex]) {
+          setCurrentCaption(video.captions![captionIndex]);
+        }
+      };
+      videoElement.addEventListener('timeupdate', handleTimeUpdate);
+      return () => videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+    } else {
+      setCurrentCaption('');
+    }
+  }, [showCaptions, video.captions, isActive]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -97,10 +127,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
         style={{ 
           filter: PREDEFINED_EFFECTS.find(e => e.id === video.effect)?.filter || 'none'
         }}
-        loop
+        loop={loop}
         playsInline
-        muted={false}
+        muted={isMuted}
         onTimeUpdate={handleTimeUpdate}
+        onError={(e) => {
+          console.error("Video load error for URL:", video.url);
+          const videoElement = e.currentTarget;
+          if (videoElement.error) {
+            console.error("Video Error Code:", videoElement.error.code);
+            console.error("Video Error Message:", videoElement.error.message);
+          }
+        }}
       />
 
       {video.effect === 'custom' && video.customEffectUrl && (
@@ -266,6 +304,37 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
             <span className="text-white text-[10px] font-bold mt-1 uppercase">{isBookmarked ? 'Saved' : 'Save'}</span>
           </div>
 
+          {/* Mute/Unmute Button */}
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+              className="transition-transform active:scale-125"
+            >
+              {isMuted ? (
+                <VolumeX size={36} color="white" fill="white" fillOpacity={0.1} />
+              ) : (
+                <Volume2 size={36} color="white" fill="white" fillOpacity={0.1} />
+              )}
+            </button>
+            <span className="text-white text-[10px] font-bold mt-1 uppercase">{isMuted ? 'Muted' : 'Sound'}</span>
+          </div>
+
+          {/* Captions Toggle */}
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowCaptions(!showCaptions); }}
+              className="transition-transform active:scale-125"
+            >
+              <Languages 
+                size={36} 
+                color={showCaptions ? "#EAB308" : "white"} 
+                fill="white" 
+                fillOpacity={showCaptions ? 0.3 : 0.1} 
+              />
+            </button>
+            <span className="text-white text-[10px] font-bold mt-1 uppercase">{showCaptions ? 'CC On' : 'CC Off'}</span>
+          </div>
+
           {/* Playback Speed Control */}
           <div className="flex flex-col items-center">
             <button 
@@ -294,6 +363,24 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onPrev, o
           </motion.div>
         </div>
       )}
+
+      {/* Captions Overlay */}
+      <AnimatePresence>
+        {showCaptions && currentCaption && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute bottom-32 left-0 right-0 flex justify-center px-8 z-20 pointer-events-none"
+          >
+            <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10 max-w-xs text-center">
+              <p className="text-white text-sm font-medium leading-tight shadow-sm">
+                {currentCaption}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Info */}
       {!isFullscreen && (

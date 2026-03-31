@@ -190,6 +190,7 @@ export default function App() {
             onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
             onLike={(isLiked) => handleLike(video.id, isLiked)}
             onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
+            loop={true}
           />
         ))}
       </div>

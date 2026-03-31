@@ -11,6 +11,7 @@ export interface Video {
   isFollowed: boolean;
   effect?: string;
   customEffectUrl?: string;
+  captions?: string[];
 }
 
 export interface User {
