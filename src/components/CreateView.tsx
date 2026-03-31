@@ -34,6 +34,8 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
   const [isPlaying, setIsPlaying] = useState(true);
   const [showEffects, setShowEffects] = useState(false);
   const [isUploadingEffect, setIsUploadingEffect] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('none');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   
   // AI Tools State
   const [isAILoading, setIsAILoading] = useState(false);
@@ -143,20 +145,38 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      const tempVideo = document.createElement('video');
-      tempVideo.src = url;
-      tempVideo.onloadedmetadata = () => {
+      
+      if (file.type.startsWith('video/')) {
+        const tempVideo = document.createElement('video');
+        tempVideo.src = url;
+        tempVideo.onloadedmetadata = () => {
+          const newClip: Clip = {
+            id: Math.random().toString(36).substr(2, 9),
+            url,
+            start: 0,
+            end: tempVideo.duration,
+            duration: tempVideo.duration,
+            effect: activeFilter !== 'none' ? activeFilter : undefined
+          };
+          setClips([...clips, newClip]);
+          setActiveClipIndex(clips.length);
+          setStep('edit');
+        };
+      } else if (file.type.startsWith('image/')) {
         const newClip: Clip = {
           id: Math.random().toString(36).substr(2, 9),
           url,
           start: 0,
-          end: tempVideo.duration,
-          duration: tempVideo.duration
+          end: 5, // Default 5 seconds for images
+          duration: 5
         };
         setClips([...clips, newClip]);
         setActiveClipIndex(clips.length);
         setStep('edit');
-      };
+      } else if (file.type.startsWith('audio/')) {
+        setAudioUrl(url);
+        alert('Audio uploaded! You can now add it to your clips.');
+      }
     }
   };
 
@@ -342,7 +362,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
           <X size={28} />
         </button>
         {step === 'capture' && (
-          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-[#9298a6]">
+          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-[#9298a6] cursor-pointer hover:bg-black/60 transition-colors" onClick={() => { setStep('ai-tools'); setActiveAITool('music'); }}>
             <Music size={16} className="text-white" />
             <span className="text-white text-xs font-bold">Add Sound</span>
           </div>
@@ -352,6 +372,83 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
 
       {/* Main Content Area */}
       <div className="flex-1 relative bg-gray-900">
+        <AnimatePresence>
+          {showEffects && (
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="absolute inset-x-0 bottom-0 h-48 bg-gray-900 z-[110] p-4 flex flex-col gap-4 border-t border-[#9298a6]"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-white font-bold text-sm">Visual Effects & Filters</span>
+                <button onClick={() => setShowEffects(false)} className="text-gray-400">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                {PREDEFINED_EFFECTS.map(effect => (
+                  <button
+                    key={effect.id}
+                    onClick={() => {
+                      if (step === 'capture') {
+                        setActiveFilter(effect.id);
+                      } else {
+                        handleApplyEffect(effect.id);
+                      }
+                    }}
+                    className={`flex flex-col items-center gap-2 shrink-0 ${
+                      (step === 'capture' ? activeFilter === effect.id : clips[activeClipIndex]?.effect === effect.id) ? 'text-amber-500' : 'text-gray-400'
+                    }`}
+                  >
+                    <div 
+                      className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-black flex items-center justify-center ${
+                        (step === 'capture' ? activeFilter === effect.id : clips[activeClipIndex]?.effect === effect.id) ? 'border-amber-500' : 'border-gray-800'
+                      }`}
+                    >
+                      <div 
+                        className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50"
+                        style={{ filter: effect.filter }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold">{effect.name}</span>
+                  </button>
+                ))}
+                {step === 'edit' && (
+                  <label className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group relative">
+                    <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center bg-gray-800 transition-all ${
+                      clips[activeClipIndex]?.effect === 'custom' ? 'border-amber-500 text-amber-500' : 'border-[#9298a6] text-gray-500 group-hover:border-white group-hover:text-white'
+                    }`}>
+                      {isUploadingEffect ? (
+                        <Loader2 className="animate-spin" size={24} />
+                      ) : clips[activeClipIndex]?.customEffectUrl ? (
+                        <img 
+                          src={clips[activeClipIndex].customEffectUrl} 
+                          className="w-full h-full object-cover rounded-lg" 
+                          alt="Custom"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <PlusCircle size={24} />
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold">
+                      {clips[activeClipIndex]?.effect === 'custom' ? 'Custom' : 'Upload'}
+                    </span>
+                    <input 
+                      type="file" 
+                      accept="image/png,image/gif,image/jpeg" 
+                      className="hidden" 
+                      onChange={handleCustomEffectUpload} 
+                      disabled={isUploadingEffect}
+                    />
+                  </label>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {step === 'capture' && (
           <div className="h-full w-full relative">
             <video 
@@ -359,18 +456,25 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
               autoPlay 
               playsInline 
               muted 
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-all duration-300"
+              style={{ filter: PREDEFINED_EFFECTS.find(e => e.id === activeFilter)?.filter || 'none' }}
             />
             
             {/* Camera Controls Overlay */}
             <div className="absolute right-4 top-24 flex flex-col gap-6">
-              <button className="flex flex-col items-center gap-1">
+              <button 
+                onClick={() => setShowEffects(true)}
+                className="flex flex-col items-center gap-1"
+              >
                 <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                   <Wand2 size={20} className="text-white" />
                 </div>
                 <span className="text-[10px] text-white">Effects</span>
               </button>
-              <button className="flex flex-col items-center gap-1">
+              <button 
+                onClick={() => setShowEffects(true)}
+                className="flex flex-col items-center gap-1"
+              >
                 <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-[#9298a6]">
                   <Sparkles size={20} className="text-white" />
                 </div>
@@ -402,7 +506,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                     <Upload size={24} className="text-white" />
                   </div>
                   <span className="text-[10px] text-white">Upload</span>
-                  <input type="file" accept="video/*" className="hidden" onChange={handleFileSelect} />
+                  <input type="file" accept="video/*,audio/*,image/*" className="hidden" onChange={handleFileSelect} />
                 </label>
 
                 {mode === 'video' ? (
@@ -437,16 +541,33 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
           <div className="h-full w-full flex flex-col bg-black">
             {/* Video Preview */}
             <div className="flex-1 relative bg-gray-900 flex items-center justify-center overflow-hidden">
-              <video 
-                ref={previewVideoRef}
-                src={clips[activeClipIndex].url} 
-                className="max-h-full max-w-full object-contain transition-all duration-300"
-                style={{ 
-                  filter: PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.filter || 'none'
-                }}
-                playsInline
-                onClick={() => setIsPlaying(!isPlaying)}
-              />
+              {clips[activeClipIndex].url.includes('image') || !clips[activeClipIndex].url.endsWith('.mp4') && !clips[activeClipIndex].url.startsWith('blob:video') ? (
+                <img 
+                  src={clips[activeClipIndex].url} 
+                  className="max-h-full max-w-full object-contain transition-all duration-300"
+                  style={{ 
+                    filter: PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.filter || 'none'
+                  }}
+                  alt="Clip Preview"
+                />
+              ) : (
+                <video 
+                  ref={previewVideoRef}
+                  src={clips[activeClipIndex].url} 
+                  className="max-h-full max-w-full object-contain transition-all duration-300"
+                  style={{ 
+                    filter: PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.filter || 'none'
+                  }}
+                  playsInline
+                  onClick={() => setIsPlaying(!isPlaying)}
+                />
+              )}
+              
+              {audioUrl && (
+                <div className="absolute top-4 left-4 bg-amber-500 text-black text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                  <Music size={12} /> Audio Attached
+                </div>
+              )}
               
               {clips[activeClipIndex].effect === 'custom' && clips[activeClipIndex].customEffectUrl && (
                 <div className="absolute inset-0 pointer-events-none">
@@ -509,89 +630,6 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
 
             {/* Timeline / Clip List */}
             <div className="h-48 bg-gray-900 p-4 flex flex-col gap-4 relative">
-              <AnimatePresence>
-                {showEffects && (
-                  <motion.div 
-                    initial={{ y: '100%' }}
-                    animate={{ y: 0 }}
-                    exit={{ y: '100%' }}
-                    className="absolute inset-0 bg-gray-900 z-20 p-4 flex flex-col gap-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-white font-bold text-sm">Visual Effects</span>
-                      <button onClick={() => setShowEffects(false)} className="text-gray-400">
-                        <X size={20} />
-                      </button>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                      {PREDEFINED_EFFECTS.map(effect => (
-                        <button
-                          key={effect.id}
-                          onClick={() => handleApplyEffect(effect.id)}
-                          className={`flex flex-col items-center gap-2 shrink-0 ${
-                            clips[activeClipIndex].effect === effect.id ? 'text-amber-500' : 'text-gray-400'
-                          }`}
-                        >
-                          <div 
-                            className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-black flex items-center justify-center ${
-                              clips[activeClipIndex].effect === effect.id ? 'border-amber-500' : 'border-gray-800'
-                            }`}
-                          >
-                            <div 
-                              className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50"
-                              style={{ filter: effect.filter }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-bold">{effect.name}</span>
-                        </button>
-                      ))}
-                      <label className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group relative">
-                        <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center bg-gray-800 transition-all ${
-                          clips[activeClipIndex].effect === 'custom' ? 'border-amber-500 text-amber-500' : 'border-[#9298a6] text-gray-500 group-hover:border-white group-hover:text-white'
-                        }`}>
-                          {isUploadingEffect ? (
-                            <Loader2 className="animate-spin" size={24} />
-                          ) : clips[activeClipIndex].customEffectUrl ? (
-                            <img 
-                              src={clips[activeClipIndex].customEffectUrl} 
-                              className="w-full h-full object-cover rounded-lg" 
-                              alt="Custom"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <PlusCircle size={24} />
-                          )}
-                        </div>
-                        <span className="text-[10px] font-bold">
-                          {clips[activeClipIndex].effect === 'custom' ? 'Custom' : 'Upload'}
-                        </span>
-                        <input 
-                          type="file" 
-                          accept="image/png,image/gif,image/jpeg" 
-                          className="hidden" 
-                          onChange={handleCustomEffectUpload} 
-                          disabled={isUploadingEffect}
-                        />
-                        {clips[activeClipIndex].effect === 'custom' && (
-                          <button 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const newClips = [...clips];
-                              newClips[activeClipIndex] = { ...newClips[activeClipIndex], effect: 'none', customEffectUrl: undefined };
-                              setClips(newClips);
-                            }}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {clips.map((clip, i) => (
                   <div 

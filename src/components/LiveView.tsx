@@ -59,6 +59,14 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
     };
   }, []);
 
+  const [showGift, setShowGift] = useState(false);
+
+  const handleSendGift = () => {
+    setShowGift(true);
+    setComments(prev => [...prev, { id: Date.now(), user: 'You', text: 'Sent a Gift! 🎁' }]);
+    setTimeout(() => setShowGift(false), 2000);
+  };
+
   const handleSendComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -101,6 +109,23 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
           )}
         </AnimatePresence>
         
+        {/* Gift Animation */}
+        <AnimatePresence>
+          {showGift && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0, y: 50 }}
+              animate={{ scale: 1.5, opacity: 1, y: -100 }}
+              exit={{ scale: 2, opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center z-[140] pointer-events-none"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <Gift size={120} className="text-yellow-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" />
+                <span className="text-white font-bold text-xl drop-shadow-md">Super Gift!</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 p-4 flex flex-col justify-between">
           {/* Top Bar */}
@@ -151,7 +176,10 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
                 <span className="absolute -top-2 -right-2 bg-red-600 text-[8px] px-1 rounded-full">{likes}</span>
               </button>
               
-              <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6]">
+              <button 
+                onClick={handleSendGift}
+                className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6] hover:bg-amber-500/20 transition-colors"
+              >
                 <Gift size={20} className="text-yellow-400" />
               </button>
 
