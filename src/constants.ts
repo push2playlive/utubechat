@@ -1,0 +1,121 @@
+import { Video, User, PartnerSite } from './types';
+
+export const PARTNER_SITES: PartnerSite[] = [
+  { 
+    name: 'UTubeChat', 
+    domain: 'utubechat.com', 
+    icon: 'MessageCircle',
+    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4' // Using ad as placeholder
+  },
+  { 
+    name: 'Voice2Fire', 
+    domain: 'voice2fire.com', 
+    icon: 'Flame',
+    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_logo.png'
+  },
+  { 
+    name: 'Push2Play', 
+    domain: 'push2play.live', 
+    icon: 'Play',
+    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/push2play_logo.png'
+  },
+];
+
+export const MOCK_VIDEOS: Video[] = [
+  {
+    id: 'v2f_ad_1',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
+    author: '@voice2fire_official',
+    description: 'Welcome everyone! Introducing Voice2Fire. Be Paid To Be Social! 🔥 #voice2fire #socialearning #crypto',
+    song: 'Voice2Fire Anthem',
+    likes: 150000,
+    comments: 12000,
+    shares: 45000,
+    isLiked: false,
+    isFollowed: true,
+  },
+  {
+    id: 'utc_ad_1',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4',
+    author: '@utubechat_official',
+    description: 'Get Paid to be Social with UTubeChat! NEW 5 Tier Affiliate Program! 🚀 #utubechat #affiliate #earn',
+    song: 'UTubeChat Vibes',
+    likes: 240000,
+    comments: 18000,
+    shares: 67000,
+    isLiked: false,
+    isFollowed: true,
+  },
+  {
+    id: 'v2f_ad_2',
+    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_2.mp4',
+    author: '@voice2fire_official',
+    description: 'Build your 5-Tier Affiliate network with Voice2Fire! Sign up now at voice2fire.com! 💎 #network #growth #passiveincome',
+    song: 'Voice2Fire Success',
+    likes: 98000,
+    comments: 5600,
+    shares: 23000,
+    isLiked: false,
+    isFollowed: true,
+  },
+  {
+    id: '1',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-light-dancing-alone-34887-large.mp4',
+    author: '@neon_dancer',
+    description: 'Dancing in the neon lights! Supporting push2play.live 🚀 #neon #dance #vibes',
+    song: 'Neon Nights - Original Sound',
+    likes: 12400,
+    comments: 450,
+    shares: 120,
+    isLiked: false,
+    isFollowed: false,
+  },
+  {
+    id: '4',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-man-dancing-under-a-street-lamp-at-night-34884-large.mp4',
+    author: '@night_mover',
+    description: 'Late night sessions on utubechat.com. 10 toes down for the lord! 🙏 #faith #dance #night',
+    song: 'Jesus - Joe Nester',
+    likes: 45000,
+    comments: 1200,
+    shares: 8900,
+    isLiked: false,
+    isFollowed: false,
+  },
+  {
+    id: '5',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-with-lights-and-smoke-34881-large.mp4',
+    author: '@faith_live',
+    description: 'Gulfport MS was 10 toes down for the Lord! ✝️⚔️🛡️ Follow us on voice2fire.com #gulfport #faith #concert',
+    song: 'Jesus - Live Performance',
+    likes: 32000,
+    comments: 800,
+    shares: 4500,
+    isLiked: true,
+    isFollowed: true,
+  },
+  {
+    id: '2',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4',
+    author: '@nature_lover',
+    description: 'Spring is finally here! 🌸 #nature #spring #beauty',
+    song: 'Nature Sounds - Relaxing',
+    likes: 8500,
+    comments: 210,
+    shares: 45,
+    isLiked: true,
+    isFollowed: true,
+  },
+];
+
+export const CURRENT_USER: User = {
+  id: 'user_1',
+  name: 'John Doe',
+  username: '@johndoe',
+  bio: 'Just a guy who loves videos and crypto! 🚀',
+  coins: 1250,
+  followers: 1200,
+  following: 450,
+  likes: 5600,
+  avatar: 'https://picsum.photos/seed/johndoe/200/200',
+};
