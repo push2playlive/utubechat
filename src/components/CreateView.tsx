@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Camera, Video, Upload, Check, Loader2, Music, Sparkles, Wand2, Scissors, Trash2, PlusCircle, GripVertical, ChevronRight, Play, Pause, Brain, Image as ImageIcon, Music2, FileVideo, Radio } from 'lucide-react';
 import { generateMusic, generateImage, generateHQImage, analyzeVideo, hasSelectedKey, openKeySelector } from '../lib/gemini';
 import { PREDEFINED_EFFECTS } from '../constants';
-
-import { supabase } from '../lib/supabase';
+import { commandNexusService } from '../services/commandNexusService';
 
 interface Clip {
   id: string;
@@ -20,9 +19,10 @@ interface CreateViewProps {
   onClose: () => void;
   onUpload: (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => void;
   onLive?: () => void;
+  userId?: string;
 }
 
-export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLive }) => {
+export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLive, userId }) => {
   const [step, setStep] = useState<'capture' | 'edit' | 'details' | 'ai-tools'>('capture');
   const [mode, setMode] = useState<'video' | 'live'>('video');
   const [isRecording, setIsRecording] = useState(false);
@@ -249,21 +249,13 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
     try {
       let url = URL.createObjectURL(file);
 
-      // If Supabase is configured, upload the file
-      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `effects/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('assets')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error('Error uploading to Supabase:', uploadError);
-        } else {
-          const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-          url = data.publicUrl;
+      // Upload to CommandNexus if userId is available
+      if (userId) {
+        try {
+          url = await commandNexusService.uploadFile(userId, file);
+        } catch (err) {
+          console.error('Error uploading to CommandNexus:', err);
+          // Fallback to local URL if upload fails
         }
       }
 

@@ -23,11 +23,14 @@ import { View, User, Video } from './types';
 import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap } from 'lucide-react';
 import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+
+import { commandNexusService } from './services/commandNexusService';
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [commandNexusData, setCommandNexusData] = useState<any>(null);
   const [currentView, setCurrentView] = useState<View>('home');
   const [activeTab, setActiveTab] = useState<'following' | 'foryou'>('foryou');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -41,11 +44,19 @@ export default function App() {
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
+  const [isTuningMode, setIsTuningMode] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<User>(CURRENT_USER);
   
   // Firebase Auth Listener
   useEffect(() => {
+    const handleTuningMode = () => {
+      setIsTuningMode(true);
+      setTimeout(() => setIsTuningMode(false), 5000); // Auto-hide after 5 seconds
+    };
+
+    window.addEventListener('nexus_tuning_mode', handleTuningMode);
+    
     const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
       setFirebaseUser(fUser);
       if (fUser) {
@@ -67,23 +78,62 @@ export default function App() {
               likes: 0
             };
             await setDoc(userRef, newUser);
+
+            // Also create public profile
+            const publicProfileRef = doc(db, 'public_profiles', fUser.uid);
+            await setDoc(publicProfileRef, {
+              uid: fUser.uid,
+              displayName: newUser.displayName,
+              photoURL: newUser.photoURL,
+              username: `@${newUser.displayName.toLowerCase().replace(/\s+/g, '')}`,
+              followers: 0,
+              likes: 0,
+              isVerified: false,
+              updatedAt: serverTimestamp()
+            });
+
+            // Sync with CommandNexus
+            await commandNexusService.syncUser(fUser.uid, {
+              displayName: newUser.displayName,
+              email: newUser.email,
+              photoURL: newUser.photoURL
+            });
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${fUser.uid}`);
+          console.error("Error initializing user profile:", error);
+          // We don't throw here to ensure setIsAuthReady(true) is called
         }
       }
       setIsAuthReady(true);
     });
-    return () => unsubscribe();
+
+    // Fallback to ensure the app loads even if Firebase is slow or fails
+    const authTimeout = setTimeout(() => {
+      setIsAuthReady(true);
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(authTimeout);
+    };
   }, []);
 
-  // Sync User Data from Firestore
+  // Sync User Data from Firestore and CommandNexus
   useEffect(() => {
     if (firebaseUser) {
       const userRef = doc(db, 'users', firebaseUser.uid);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
+      const unsubscribe = onSnapshot(userRef, async (doc) => {
         if (doc.exists()) {
           const data = doc.data();
+          
+          // Fetch additional data from CommandNexus
+          try {
+            const cnData = await commandNexusService.getUserData(firebaseUser.uid);
+            setCommandNexusData(cnData);
+          } catch (error) {
+            console.warn('Could not fetch CommandNexus data, using Firestore only');
+          }
+
           setUser({
             id: data.uid,
             name: data.displayName,
@@ -110,18 +160,13 @@ export default function App() {
   
   // Coin Earning Logic
   useEffect(() => {
-    if (currentView === 'home') {
+    if (currentView === 'home' && firebaseUser) {
       const interval = setInterval(() => {
-        setUser(prev => ({
-          ...prev,
-          coins: prev.coins + 1
-        }));
-        setShowCoinToast(true);
-        setTimeout(() => setShowCoinToast(false), 2000);
-      }, 10000); // Earn 1 coin every 10 seconds
+        earnCoins(1, 'watch_bonus');
+      }, 30000); // Earn 1 coin every 30 seconds (reduced frequency for backend)
       return () => clearInterval(interval);
     }
-  }, [currentView]);
+  }, [currentView, firebaseUser]);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +193,9 @@ export default function App() {
           isLiked: true
         };
         setVideos(updatedVideos);
+        
+        // Reward for liking
+        earnCoins(1, 'like_bonus');
       }
     }
     setLastTap(now);
@@ -183,19 +231,48 @@ export default function App() {
     setActiveVideoIndex(0);
     
     // Reward for uploading
-    earnCoins(50);
+    earnCoins(50, 'upload_bonus');
   };
 
-  const earnCoins = (amount: number) => {
+  const earnCoins = async (amount: number, reason: string = 'bonus') => {
+    if (!firebaseUser) return;
+    
+    // Optimistic update
     setUser(prev => ({ ...prev, coins: prev.coins + amount }));
     setShowCoinToast(true);
     setTimeout(() => setShowCoinToast(false), 2000);
+
+    try {
+      // Update backend
+      await commandNexusService.earnCoins(firebaseUser.uid, amount, reason);
+      
+      // Also update Firestore for now as a mirror
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      await updateDoc(userRef, {
+        coins: (user.coins || 0) + amount
+      });
+    } catch (error) {
+      console.error('Failed to sync coins to backend:', error);
+    }
   };
 
-  const handleSwap = (amount: number, cryptoType: string) => {
+  const handleSwap = async (amount: number, cryptoType: string) => {
+    if (!firebaseUser) return;
+
+    // Optimistic update
     setUser(prev => ({ ...prev, coins: prev.coins - amount }));
-    // In a real app, we'd update the crypto balance on the server
-    alert(`Successfully swapped ${amount} TokCoins for ${cryptoType}!`);
+    
+    try {
+      // Update Firestore mirror
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      await updateDoc(userRef, {
+        coins: (user.coins || 0) - amount
+      });
+      
+      alert(`Successfully swapped ${amount} TokCoins for ${cryptoType}!`);
+    } catch (error) {
+      console.error('Failed to sync swap to Firestore:', error);
+    }
   };
 
   const scrollToVideo = (index: number) => {
@@ -256,10 +333,10 @@ export default function App() {
         <div className="w-full max-w-sm space-y-4">
           <button 
             onClick={signInWithGoogle}
-            className="w-full bg-white text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
+            className="w-full bg-white text-black font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
           >
             <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            <span>Continue with Google</span>
+            <span className="text-sm">Continue with Google</span>
           </button>
           <p className="text-[10px] text-gray-600 px-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
@@ -796,6 +873,7 @@ export default function App() {
               setIsLiveOpen(true);
               setCurrentView('home');
             }}
+            userId={user?.id}
           />
         )}
         
@@ -935,6 +1013,40 @@ export default function App() {
             <Coins size={18} />
             <span>+5 TokCoins!</span>
             <CheckCircle size={16} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* System Tuning Overlay */}
+      <AnimatePresence>
+        {isTuningMode && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+          >
+            <button 
+              onClick={() => setIsTuningMode(false)}
+              className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="mb-6"
+            >
+              <Zap size={48} className="text-amber-500" />
+            </motion.div>
+            <h2 className="text-2xl font-bold text-white mb-2">System Tuning in Progress</h2>
+            <p className="text-gray-400 max-w-xs">The CommandNexus is currently optimizing your experience. We'll be back in a flash.</p>
+            <button 
+              onClick={() => setIsTuningMode(false)}
+              className="mt-8 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors"
+            >
+              Dismiss
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

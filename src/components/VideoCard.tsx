@@ -125,7 +125,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       <video
         ref={videoRef}
         src={video.url}
-        className="h-full w-full object-cover transition-all duration-300"
+        onClick={(e) => {
+          if (isFullscreen) {
+            e.stopPropagation();
+            setIsFullscreen(false);
+          }
+        }}
+        className="h-full w-full object-cover transition-all duration-300 cursor-pointer"
         style={{ 
           filter: PREDEFINED_EFFECTS.find(e => e.id === video.effect)?.filter || 'none'
         }}
@@ -169,9 +175,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
-            className="absolute top-6 right-6 z-[100] w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6] hover:bg-black/60 transition-colors"
+            className="absolute top-6 right-6 z-[100] w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-[#9298a6] hover:bg-black/60 transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -195,8 +201,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       {!isFullscreen && (
         <div className="absolute right-4 bottom-20 flex flex-col items-center gap-4 z-10">
           {/* User Profile */}
-          <div className="relative mb-2">
-            <div className="w-12 h-12 rounded-full border-2 border-[#9298a6] overflow-hidden bg-gray-800">
+          <div className="relative mb-1">
+            <div className="w-10 h-10 rounded-full border-2 border-[#9298a6] overflow-hidden bg-gray-800">
               <img 
                 src={`https://picsum.photos/seed/${video.author}/100/100`} 
                 alt={video.author}
@@ -213,7 +219,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                   onClick={toggleFollow}
                   className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-500 rounded-full p-0.5 text-black shadow-lg"
                 >
-                  <Plus size={14} />
+                  <Plus size={12} />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -223,34 +229,34 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           <div className="flex flex-col items-center">
             <button 
               onClick={(e) => { e.stopPropagation(); onPrev?.(); }}
-              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110"
             >
-              <ChevronUp size={28} color="white" />
+              <ChevronUp size={20} color="white" />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">Prev</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">Prev</span>
           </div>
 
           {/* Like Button */}
           <div className="flex flex-col items-center">
             <button onClick={(e) => { e.stopPropagation(); toggleLike(); }} className="transition-transform active:scale-125">
               <Heart 
-                size={36} 
+                size={26} 
                 fill={isLiked ? "#f59e0b" : "none"} 
                 color={isLiked ? "#f59e0b" : "white"} 
               />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{formatNumber(likes)}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{formatNumber(likes)}</span>
           </div>
 
           {/* Next Button */}
           <div className="flex flex-col items-center">
             <button 
               onClick={(e) => { e.stopPropagation(); onNext?.(); }}
-              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110"
             >
-              <ChevronDown size={28} color="white" />
+              <ChevronDown size={20} color="white" />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">Next</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">Next</span>
           </div>
 
           {/* Comments Button */}
@@ -263,9 +269,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               }}
               className="transition-transform active:scale-125"
             >
-              <MessageCircle size={36} color="white" fill="white" fillOpacity={0.1} />
+              <MessageCircle size={26} color="white" fill="white" fillOpacity={0.1} />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{formatNumber(video.comments)}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{formatNumber(video.comments)}</span>
           </div>
 
           {/* Message Button */}
@@ -277,9 +283,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               }}
               className="transition-transform active:scale-125"
             >
-              <Mail size={36} color="white" fill="white" fillOpacity={0.1} />
+              <Mail size={26} color="white" fill="white" fillOpacity={0.1} />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">Chat</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">Chat</span>
           </div>
 
           {/* Share Button */}
@@ -288,9 +294,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
               className="transition-transform active:scale-125"
             >
-              <Share2 size={36} color="white" fill="white" fillOpacity={0.1} />
+              <Share2 size={26} color="white" fill="white" fillOpacity={0.1} />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{formatNumber(video.shares)}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{formatNumber(video.shares)}</span>
           </div>
 
           {/* Fullscreen Toggle */}
@@ -299,9 +305,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
               className="transition-transform active:scale-125"
             >
-              <Maximize2 size={36} color="white" fill="white" fillOpacity={0.1} />
+              <Maximize2 size={26} color="white" fill="white" fillOpacity={0.1} />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">Full</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">Full</span>
           </div>
 
           {/* Save/Favorite Button */}
@@ -311,13 +317,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               className="transition-transform active:scale-125"
             >
               <Bookmark 
-                size={36} 
+                size={26} 
                 color={isBookmarked ? "#EAB308" : "white"} 
                 fill={isBookmarked ? "#EAB308" : "white"} 
                 fillOpacity={isBookmarked ? 1 : 0.1} 
               />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{isBookmarked ? 'Saved' : 'Save'}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{isBookmarked ? 'Saved' : 'Save'}</span>
           </div>
 
           {/* Mute/Unmute Button */}
@@ -327,12 +333,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               className="transition-transform active:scale-125"
             >
               {isMuted ? (
-                <VolumeX size={36} color="white" fill="white" fillOpacity={0.1} />
+                <VolumeX size={26} color="white" fill="white" fillOpacity={0.1} />
               ) : (
-                <Volume2 size={36} color="white" fill="white" fillOpacity={0.1} />
+                <Volume2 size={26} color="white" fill="white" fillOpacity={0.1} />
               )}
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{isMuted ? 'Muted' : 'Sound'}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{isMuted ? 'Muted' : 'Sound'}</span>
           </div>
 
           {/* Captions Toggle */}
@@ -342,30 +348,30 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               className="transition-transform active:scale-125"
             >
               <Languages 
-                size={36} 
+                size={26} 
                 color={showCaptions ? "#EAB308" : "white"} 
                 fill="white" 
                 fillOpacity={showCaptions ? 0.3 : 0.1} 
               />
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">{showCaptions ? 'CC On' : 'CC Off'}</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">{showCaptions ? 'CC On' : 'CC Off'}</span>
           </div>
 
           {/* Playback Speed Control */}
           <div className="flex flex-col items-center">
             <button 
               onClick={cyclePlaybackRate}
-              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110 border border-[#9298a6]"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110 border border-[#9298a6]"
             >
-              <span className="text-white text-xs font-bold">{playbackRate}x</span>
+              <span className="text-white text-[10px] font-bold">{playbackRate}x</span>
             </button>
-            <span className="text-white text-[10px] font-bold mt-1 uppercase">Speed</span>
+            <span className="text-white text-[8px] font-bold mt-0.5 uppercase">Speed</span>
           </div>
 
           {/* More Button */}
           <div className="flex flex-col items-center">
-            <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110">
-              <MoreHorizontal size={28} color="white" />
+            <button className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md transition-transform active:scale-110">
+              <MoreHorizontal size={20} color="white" />
             </button>
           </div>
 
@@ -373,9 +379,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="w-10 h-10 rounded-full bg-gray-900 border-4 border-[#9298a6] flex items-center justify-center mt-2"
+            className="w-8 h-8 rounded-full bg-gray-900 border-4 border-[#9298a6] flex items-center justify-center mt-1"
           >
-            <div className="w-3 h-3 rounded-full bg-gray-600" />
+            <div className="w-2 h-2 rounded-full bg-gray-600" />
           </motion.div>
         </div>
       )}

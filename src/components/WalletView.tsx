@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { X, ArrowUpRight, ArrowDownLeft, RefreshCw, Coins, Wallet, ChevronRight, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, ArrowUpRight, ArrowDownLeft, RefreshCw, Coins, Wallet, ChevronRight, Info, Copy, Check, QrCode } from 'lucide-react';
 import { User } from '../types';
+import { commandNexusService, CryptoAsset } from '../services/commandNexusService';
 
 interface WalletViewProps {
   user: User;
@@ -12,20 +13,58 @@ interface WalletViewProps {
 export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap }) => {
   const [swapAmount, setSwapAmount] = useState<string>('');
   const [selectedCrypto, setSelectedCrypto] = useState('XRP');
+  const [assets, setAssets] = useState<CryptoAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [receiveAddress, setReceiveAddress] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [selectedReceiveAsset, setSelectedReceiveAsset] = useState<CryptoAsset | null>(null);
 
-  const cryptoAssets = [
-    { name: 'XRP', symbol: 'XRP', balance: '2,450.00', color: 'text-blue-400', icon: 'https://cryptologos.cc/logos/ripple-xrp-logo.png' },
-    { name: 'Bitcoin', symbol: 'BTC', balance: '0.042', color: 'text-orange-400', icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png' },
-    { name: 'Solana', symbol: 'SOL', balance: '12.5', color: 'text-purple-400', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
-    { name: 'Stellar', symbol: 'XLM', balance: '1,200.00', color: 'text-gray-400', icon: 'https://cryptologos.cc/logos/stellar-xlm-logo.png' },
-  ];
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        const data = await commandNexusService.getCryptoAssets(user.id);
+        setAssets(data);
+      } catch (error) {
+        console.error('Failed to fetch assets from CommandNexus');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAssets();
+  }, [user.id]);
 
-  const handleSwap = () => {
+  const handleSwap = async () => {
     const amount = parseInt(swapAmount);
     if (!isNaN(amount) && amount > 0 && amount <= user.coins) {
-      onSwap(amount, selectedCrypto);
-      setSwapAmount('');
+      try {
+        const success = await commandNexusService.swapCoins(user.id, amount, selectedCrypto);
+        if (success) {
+          onSwap(amount, selectedCrypto);
+          setSwapAmount('');
+        }
+      } catch (error) {
+        console.error('Swap failed on CommandNexus');
+      }
     }
+  };
+
+  const handleOpenReceive = async (asset: CryptoAsset) => {
+    setSelectedReceiveAsset(asset);
+    setIsReceiveModalOpen(true);
+    setIsCopied(false);
+    try {
+      const address = await commandNexusService.getWalletAddress(user.id, asset.symbol);
+      setReceiveAddress(address);
+    } catch (error) {
+      setReceiveAddress('Error fetching address');
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(receiveAddress);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   return (
@@ -53,64 +92,67 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Main Balance Card */}
-          <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-[#9298a6] relative overflow-hidden">
+          <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-black p-5 rounded-3xl border border-[#9298a6] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32" />
             
-            <div className="flex justify-between items-start mb-10">
+            <div className="flex justify-between items-start mb-8">
               <div>
-                <p className="text-gray-500 text-sm font-medium mb-1">Total TokCoins</p>
-                <div className="flex items-center gap-3">
-                  <Coins className="text-yellow-500" size={32} />
-                  <span className="text-4xl font-bold text-white">{user.coins.toLocaleString()}</span>
+                <p className="text-gray-500 text-xs font-medium mb-1">Total TokCoins</p>
+                <div className="flex items-center gap-2">
+                  <Coins className="text-yellow-500" size={24} />
+                  <span className="text-3xl font-bold text-white">{user.coins.toLocaleString()}</span>
                 </div>
               </div>
-              <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                <ArrowUpRight size={14} /> +12%
+              <div className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+                <ArrowUpRight size={12} /> +12%
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <button className="flex-1 bg-white text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2">
-                <ArrowDownLeft size={18} /> Deposit
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleOpenReceive(assets[0] || { name: 'XRP', symbol: 'XRP', icon: '', balance: '0', change24h: 0, color: '' })}
+                className="flex-1 bg-white text-black py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+              >
+                <ArrowDownLeft size={16} /> Receive
               </button>
-              <button className="flex-1 bg-gray-800 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 border border-[#9298a6]">
-                <ArrowUpRight size={18} /> Withdraw
+              <button className="flex-1 bg-gray-800 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-[#9298a6]">
+                <ArrowUpRight size={16} /> Send
               </button>
             </div>
           </div>
 
           {/* Swap Card */}
-          <div className="bg-gray-900/50 p-6 rounded-3xl border border-[#9298a6] flex flex-col">
-            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-              <RefreshCw size={18} className="text-blue-400" /> Quick Swap
+          <div className="bg-gray-900/50 p-5 rounded-3xl border border-[#9298a6] flex flex-col">
+            <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2">
+              <RefreshCw size={16} className="text-blue-400" /> Quick Swap
             </h3>
             
             <div className="space-y-4 flex-1">
-              <div className="bg-black/40 p-3 rounded-xl border border-[#9298a6]">
+              <div className="bg-black/40 p-2 rounded-xl border border-[#9298a6]">
                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">From TokCoins</p>
                 <input 
                   type="number" 
                   value={swapAmount}
                   onChange={(e) => setSwapAmount(e.target.value)}
                   placeholder="0.00"
-                  className="bg-transparent text-white w-full text-xl font-bold outline-none"
+                  className="bg-transparent text-white w-full text-lg font-bold outline-none"
                 />
               </div>
 
               <div className="flex justify-center -my-2 relative z-10">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center border-4 border-black">
-                  <RefreshCw size={14} className="text-white" />
+                <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center border-4 border-black">
+                  <RefreshCw size={12} className="text-white" />
                 </div>
               </div>
 
-              <div className="bg-black/40 p-3 rounded-xl border border-[#9298a6]">
+              <div className="bg-black/40 p-2 rounded-xl border border-[#9298a6]">
                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">To Crypto</p>
                 <select 
                   value={selectedCrypto}
                   onChange={(e) => setSelectedCrypto(e.target.value)}
-                  className="bg-transparent text-white w-full text-xl font-bold outline-none appearance-none"
+                  className="bg-transparent text-white w-full text-lg font-bold outline-none appearance-none"
                 >
-                  {cryptoAssets.map(asset => (
+                  {assets.map(asset => (
                     <option key={asset.symbol} value={asset.symbol}>{asset.symbol}</option>
                   ))}
                 </select>
@@ -120,7 +162,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
             <button 
               onClick={handleSwap}
               disabled={!swapAmount || parseInt(swapAmount) > user.coins}
-              className="w-full mt-6 bg-blue-500 text-white py-3 rounded-2xl font-bold disabled:opacity-50"
+              className="w-full mt-4 bg-blue-500 text-white py-2 rounded-xl font-bold text-sm disabled:opacity-50"
             >
               Swap Now
             </button>
@@ -130,27 +172,38 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
         {/* Assets List */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           <h3 className="text-white font-bold mb-4">Your Assets</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {cryptoAssets.map((asset, i) => (
-              <div key={i} className="bg-gray-900/30 p-4 rounded-2xl border border-[#9298a6] flex items-center justify-between hover:bg-gray-800/50 transition-colors cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center p-2 border border-[#9298a6]">
-                    <img src={asset.icon} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <RefreshCw className="text-blue-400 animate-spin" size={32} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {assets.map((asset, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => handleOpenReceive(asset)}
+                  className="bg-gray-900/30 p-3 rounded-2xl border border-[#9298a6] flex items-center justify-between hover:bg-gray-800/50 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center p-1.5 border border-[#9298a6]">
+                      <img src={asset.icon} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-xs">{asset.name}</p>
+                      <p className="text-gray-500 text-[9px]">{asset.symbol}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-bold text-sm">{asset.name}</p>
-                    <p className="text-gray-500 text-[10px]">{asset.symbol}</p>
+                  <div className="text-right">
+                    <p className="text-white font-bold text-xs">{asset.balance}</p>
+                    <p className={`${asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'} text-[9px] flex items-center justify-end gap-1`}>
+                      {asset.change24h >= 0 ? <ArrowUpRight size={9} /> : <ArrowDownLeft size={9} />}
+                      {Math.abs(asset.change24h)}%
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-white font-bold text-sm">{asset.balance}</p>
-                  <p className="text-green-400 text-[10px] flex items-center justify-end gap-1">
-                    <ArrowUpRight size={10} /> +2.4%
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="mt-8 p-4 bg-blue-500/5 rounded-2xl border border-[#9298a6] flex gap-3">
             <Info className="text-blue-400 shrink-0" size={20} />
@@ -160,6 +213,64 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
           </div>
         </div>
       </div>
+
+      {/* Receive Modal */}
+      <AnimatePresence>
+        {isReceiveModalOpen && selectedReceiveAsset && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsReceiveModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-gray-900 rounded-[32px] border border-[#9298a6] p-8 flex flex-col items-center"
+            >
+              <button 
+                onClick={() => setIsReceiveModalOpen(false)}
+                className="absolute top-6 right-6 text-gray-500 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="w-16 h-16 rounded-full bg-black p-3 border border-[#9298a6] mb-4">
+                <img src={selectedReceiveAsset.icon} alt={selectedReceiveAsset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              </div>
+
+              <h2 className="text-xl font-bold text-white mb-1">Receive {selectedReceiveAsset.name}</h2>
+              <p className="text-gray-500 text-xs mb-8">Scan QR or copy address below</p>
+
+              <div className="w-48 h-48 bg-white rounded-2xl p-4 mb-8 flex items-center justify-center">
+                <QrCode size={160} className="text-black" />
+              </div>
+
+              <div className="w-full bg-black/40 rounded-xl border border-[#9298a6] p-3 mb-6">
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Your {selectedReceiveAsset.symbol} Address</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-white text-[11px] font-mono break-all line-clamp-2">
+                    {receiveAddress || 'Generating...'}
+                  </p>
+                  <button 
+                    onClick={copyToClipboard}
+                    className="shrink-0 w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
+                  >
+                    {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 text-center leading-relaxed">
+                Only send <span className="text-white font-bold">{selectedReceiveAsset.symbol}</span> to this address. Sending any other asset may result in permanent loss.
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

@@ -1,5 +1,21 @@
 {
   "entities": {
+    "PublicProfile": {
+      "title": "Public Profile",
+      "description": "Publicly accessible user profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "url", "description": "The user's profile picture URL." },
+        "username": { "type": "string", "description": "The user's unique username." },
+        "followers": { "type": "integer", "description": "Number of followers." },
+        "likes": { "type": "integer", "description": "Total likes received." },
+        "isVerified": { "type": "boolean", "description": "Whether the user is verified." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the public profile was last updated." }
+      },
+      "required": ["uid", "displayName"]
+    },
     "UserProfile": {
       "title": "User Profile",
       "description": "Stores user profile information and preferences.",
@@ -12,7 +28,11 @@
         "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role in the application." },
         "createdAt": { "type": "string", "format": "date-time", "description": "When the user profile was created." },
         "location": { "type": "string", "description": "The user's location." },
-        "phoneNumber": { "type": "string", "description": "The user's phone number." }
+        "phoneNumber": { "type": "string", "description": "The user's phone number." },
+        "coins": { "type": "integer", "description": "The user's coin balance." },
+        "followers": { "type": "integer", "description": "Number of followers." },
+        "following": { "type": "integer", "description": "Number of users followed." },
+        "likes": { "type": "integer", "description": "Total likes received." }
       },
       "required": ["uid", "email", "role"]
     },
@@ -76,6 +96,10 @@
     "/users/{userId}/blocked/{blockedId}": {
       "schema": "BlockedAccount",
       "description": "Blocked accounts for a specific user."
+    },
+    "/public_profiles/{userId}": {
+      "schema": "PublicProfile",
+      "description": "Publicly accessible user profile information."
     }
   }
 }

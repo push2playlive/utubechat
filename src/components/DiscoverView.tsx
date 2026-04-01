@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, TrendingUp, User, Play, ChevronRight, X } from 'lucide-react';
 import { Video, User as UserType } from '../types';
-import { MOCK_VIDEOS, MOCK_USERS } from '../constants';
+import { MOCK_VIDEOS } from '../constants';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 
 interface DiscoverViewProps {
   onClose?: () => void;
@@ -13,25 +15,83 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onClose, initialQuer
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [results, setResults] = useState<{ videos: Video[]; users: UserType[] }>({ videos: [], users: [] });
   const [isSearching, setIsSearching] = useState(false);
+  const [suggestedUsers, setSuggestedUsers] = useState<UserType[]>([]);
+
+  // Fetch suggested users
+  useEffect(() => {
+    const fetchSuggested = async () => {
+      try {
+        const q = query(collection(db, 'public_profiles'), limit(5));
+        const snapshot = await getDocs(q);
+        const users = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: data.uid,
+            name: data.displayName,
+            username: data.username,
+            avatar: data.photoURL,
+            coins: 0,
+            followers: data.followers || 0,
+            following: 0,
+            likes: data.likes || 0
+          };
+        });
+        setSuggestedUsers(users);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, 'public_profiles');
+      }
+    };
+    fetchSuggested();
+  }, []);
 
   useEffect(() => {
     if (searchQuery.trim()) {
       setIsSearching(true);
-      // Simulate search delay
-      const timer = setTimeout(() => {
-        const query = searchQuery.toLowerCase();
+      const search = async () => {
+        const qStr = searchQuery.toLowerCase();
+        
+        // Search Videos (Mock for now, but could be Firestore)
         const filteredVideos = MOCK_VIDEOS.filter(v => 
-          v.description.toLowerCase().includes(query) || 
-          v.author.toLowerCase().includes(query) ||
-          v.song.toLowerCase().includes(query)
+          v.description.toLowerCase().includes(qStr) || 
+          v.author.toLowerCase().includes(qStr) ||
+          v.song.toLowerCase().includes(qStr)
         );
-        const filteredUsers = MOCK_USERS.filter(u => 
-          u.name.toLowerCase().includes(query) || 
-          u.username.toLowerCase().includes(query)
-        );
-        setResults({ videos: filteredVideos, users: filteredUsers });
-        setIsSearching(false);
-      }, 300);
+
+        // Search Users in Firestore
+        try {
+          // Note: Firestore doesn't support full-text search easily without external services,
+          // but we can do a simple prefix search or just fetch and filter for this demo.
+          // For a real app, we'd use Algolia or similar.
+          const userQuery = query(collection(db, 'public_profiles'), limit(20));
+          const userSnapshot = await getDocs(userQuery);
+          const allUsers = userSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: data.uid,
+              name: data.displayName,
+              username: data.username,
+              avatar: data.photoURL,
+              coins: 0,
+              followers: data.followers || 0,
+              following: 0,
+              likes: data.likes || 0
+            };
+          });
+
+          const filteredUsers = allUsers.filter(u => 
+            u.name.toLowerCase().includes(qStr) || 
+            u.username.toLowerCase().includes(qStr)
+          );
+
+          setResults({ videos: filteredVideos, users: filteredUsers });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, 'public_profiles');
+        } finally {
+          setIsSearching(false);
+        }
+      };
+
+      const timer = setTimeout(search, 300);
       return () => clearTimeout(timer);
     } else {
       setResults({ videos: [], users: [] });
@@ -96,11 +156,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onClose, initialQuer
             <section>
               <h2 className="text-lg font-bold mb-4">Suggested Users</h2>
               <div className="space-y-4">
-                {MOCK_USERS.slice(1, 4).map(user => (
+                {suggestedUsers.map(user => (
                   <div key={user.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full overflow-hidden border border-[#9298a6]">
-                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div>
                         <p className="font-bold text-sm">{user.name}</p>
@@ -133,7 +193,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onClose, initialQuer
                         <div key={user.id} className="flex items-center justify-between group cursor-pointer">
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full overflow-hidden border border-[#9298a6]">
-                              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                             <div>
                               <p className="font-bold text-sm group-hover:text-amber-500 transition-colors">{user.name}</p>

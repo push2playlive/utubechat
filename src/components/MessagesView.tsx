@@ -116,6 +116,27 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+
+  // Fetch available users for new chat
+  useEffect(() => {
+    if (!isNewChatOpen) return;
+    
+    const fetchUsers = async () => {
+      try {
+        const q = query(collection(db, 'public_profiles'), limit(10));
+        const snapshot = await getDocs(q);
+        const users = snapshot.docs
+          .map(doc => doc.data())
+          .filter(u => u.uid !== auth.currentUser?.uid);
+        setAvailableUsers(users);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, 'public_profiles');
+      }
+    };
+    fetchUsers();
+  }, [isNewChatOpen]);
+
   const handleSendMessage = async (e?: React.FormEvent, content?: string, type: 'text' | 'gif' = 'text') => {
     if (e) e.preventDefault();
     if (!auth.currentUser || !activeChat) return;
@@ -578,21 +599,20 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   <button onClick={() => setIsNewChatOpen(false)} className="text-gray-500"><X size={20} /></button>
                 </div>
                   <div className="p-4 space-y-2">
-                    {[
-                      { uid: 'sarah_uid', displayName: 'Sarah Wilson', photoURL: 'https://picsum.photos/seed/sarah/100/100' },
-                      { uid: 'mike_uid', displayName: 'Mike Ross', photoURL: 'https://picsum.photos/seed/mike/100/100' },
-                      { uid: 'king_uid', displayName: 'CryptoKing', photoURL: 'https://picsum.photos/seed/king/100/100' },
-                      { uid: 'emma_uid', displayName: 'Emma Watson', photoURL: 'https://picsum.photos/seed/emma/100/100' }
-                    ].map(user => (
-                      <button 
-                        key={user.uid}
-                        onClick={() => handleStartNewChat(user)}
-                        className="w-full p-3 flex items-center gap-3 hover:bg-white/5 rounded-xl transition-colors text-left"
-                      >
-                        <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full" />
-                        <span className="text-white text-sm font-medium">{user.displayName}</span>
-                      </button>
-                    ))}
+                    {availableUsers.length > 0 ? (
+                      availableUsers.map(user => (
+                        <button 
+                          key={user.uid}
+                          onClick={() => handleStartNewChat(user)}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-white/5 rounded-xl transition-colors text-left"
+                        >
+                          <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                          <span className="text-white text-sm font-medium">{user.displayName}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-4 text-sm">No users found</p>
+                    )}
                   </div>
               </motion.div>
             </motion.div>
