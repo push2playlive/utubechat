@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell } from 'lucide-react';
+import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock } from 'lucide-react';
 
 interface MessagesViewProps {
   onClose: () => void;
@@ -24,6 +24,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   const [notification, setNotification] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showChatMenu, setShowChatMenu] = useState(false);
 
   const [chats, setChats] = useState([
     { id: 1, name: 'Sarah Wilson', lastMsg: 'That video was hilarious! 😂', time: '2m ago', unread: 2, avatar: 'https://picsum.photos/seed/sarah/100/100' },
@@ -104,6 +105,16 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     setShowGifPicker(false);
   };
 
+  const handleBlockUser = () => {
+    const activeChatData = chats.find(c => c.id === activeChat);
+    if (activeChatData) {
+      showPushNotification(`${activeChatData.name} has been blocked`);
+      setChats(chats.filter(c => c.id !== activeChat));
+      setActiveChat(null);
+      setShowChatMenu(false);
+    }
+  };
+
   const handleStartNewChat = (name: string) => {
     const newChat = {
       id: Date.now(),
@@ -172,9 +183,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => setIsNewChatOpen(true)}
-                    className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white shadow-lg shadow-pink-500/20"
+                    className="flex items-center gap-2 bg-pink-500 hover:bg-pink-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg shadow-pink-500/20 transition-all active:scale-95"
                   >
-                    <UserPlus size={20} />
+                    <UserPlus size={18} />
+                    <span>New Chat</span>
                   </button>
                   <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white">
                     <X size={20} />
@@ -246,9 +258,39 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     <p className="text-green-400 text-[10px]">Online</p>
                   </div>
                 </div>
-                <button className="text-white">
-                  <MoreVertical size={20} />
-                </button>
+                <div className="relative">
+                  <button onClick={() => setShowChatMenu(!showChatMenu)} className="text-white p-2 hover:bg-white/10 rounded-full">
+                    <MoreVertical size={20} />
+                  </button>
+                  <AnimatePresence>
+                    {showChatMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-[#9298a6] rounded-xl shadow-2xl z-50 overflow-hidden"
+                      >
+                        <button 
+                          onClick={() => {
+                            setMessages([]);
+                            setShowChatMenu(false);
+                          }}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-white/5 text-left text-sm text-white"
+                        >
+                          <Trash2 size={16} className="text-gray-400" />
+                          Clear Chat
+                        </button>
+                        <button 
+                          onClick={handleBlockUser}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-red-500/10 text-left text-sm text-red-400"
+                        >
+                          <Lock size={16} />
+                          Block User
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-hide">
@@ -264,10 +306,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     )}
                     <div className="flex items-center gap-2 max-w-[85%]">
                       {msg.sender === 'me' && (
-                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
-                          <button onClick={() => setReplyingTo(msg)} className="text-gray-500 hover:text-white" title="Reply"><Reply size={14} /></button>
-                          <button onClick={() => handleEditMessage(msg)} className="text-gray-500 hover:text-blue-400" title="Edit"><MoreVertical size={14} /></button>
-                          <button onClick={() => handleDeleteMessage(msg.id)} className="text-gray-500 hover:text-red-500" title="Delete"><Trash2 size={14} /></button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
+                          <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
+                          <button onClick={() => handleEditMessage(msg)} className="text-gray-400 hover:text-blue-400 p-1 transition-colors" title="Edit"><MoreVertical size={14} /></button>
+                          <button onClick={() => handleDeleteMessage(msg.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors" title="Delete"><Trash2 size={14} /></button>
                         </div>
                       )}
                       <div className={`p-3 rounded-2xl text-sm ${msg.sender === 'me' ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
@@ -283,8 +325,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                         )}
                       </div>
                       {msg.sender === 'them' && (
-                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
-                          <button onClick={() => setReplyingTo(msg)} className="text-gray-500 hover:text-white" title="Reply"><Reply size={14} /></button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
+                          <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
                         </div>
                       )}
                     </div>

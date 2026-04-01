@@ -154,6 +154,14 @@ export default function App() {
     setIsMessagesOpen(true);
   };
 
+  const handleLogout = () => {
+    setIsMenuOpen(false);
+    setCurrentView('home');
+    // In a real app, this would clear tokens/session
+    setShowCoinToast(true); // Reusing toast for feedback
+    setTimeout(() => setShowCoinToast(false), 2000);
+  };
+
   const renderHome = () => (
     <div className="h-full w-full flex bg-[#050505]">
       {/* Left Sidebar (Desktop Only) */}
@@ -515,7 +523,20 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 border-t border-[#9298a6] pt-4">
-                  <button className="flex items-center justify-between text-white p-3 rounded-lg hover:bg-gray-800 transition-colors w-full">
+                  <button 
+                    onClick={() => { setCurrentView('settings'); setIsMenuOpen(false); }}
+                    className="flex items-center justify-between text-white p-3 rounded-lg hover:bg-gray-800 transition-colors w-full"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Settings size={20} className="text-amber-500" />
+                      <span>Settings</span>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-600" />
+                  </button>
+                  <button 
+                    onClick={() => { setShowCoinToast(true); setTimeout(() => setShowCoinToast(false), 2000); }}
+                    className="flex items-center justify-between text-white p-3 rounded-lg hover:bg-gray-800 transition-colors w-full mt-1"
+                  >
                     <div className="flex items-center gap-3">
                       <HelpCircle size={20} className="text-purple-400" />
                       <span>Help & FAQ</span>
@@ -523,7 +544,10 @@ export default function App() {
                     <ChevronRight size={16} className="text-gray-600" />
                   </button>
                   <div className="h-px bg-[#9298a6] my-4" />
-                  <button className="flex items-center gap-3 text-red-400 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 text-red-400 p-3 rounded-lg hover:bg-gray-800 transition-colors w-full"
+                  >
                     <LogOut size={20} />
                     <span>Log Out</span>
                   </button>
