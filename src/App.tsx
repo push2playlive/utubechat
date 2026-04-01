@@ -20,9 +20,14 @@ import { Comments } from './components/Comments';
 import { DiscoverView } from './components/DiscoverView';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X } from 'lucide-react';
+import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap } from 'lucide-react';
+import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentView, setCurrentView] = useState<View>('home');
   const [activeTab, setActiveTab] = useState<'following' | 'foryou'>('foryou');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -38,6 +43,65 @@ export default function App() {
   const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<User>(CURRENT_USER);
+  
+  // Firebase Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
+      setFirebaseUser(fUser);
+      if (fUser) {
+        // Check if user exists in Firestore, if not create profile
+        const userRef = doc(db, 'users', fUser.uid);
+        try {
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            const newUser = {
+              uid: fUser.uid,
+              displayName: fUser.displayName || 'New User',
+              email: fUser.email || '',
+              photoURL: fUser.photoURL || `https://picsum.photos/seed/${fUser.uid}/200/200`,
+              role: 'user',
+              createdAt: serverTimestamp(),
+              coins: 100, // Starting bonus
+              followers: 0,
+              following: 0,
+              likes: 0
+            };
+            await setDoc(userRef, newUser);
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${fUser.uid}`);
+        }
+      }
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync User Data from Firestore
+  useEffect(() => {
+    if (firebaseUser) {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const unsubscribe = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setUser({
+            id: data.uid,
+            name: data.displayName,
+            username: `@${data.displayName.toLowerCase().replace(/\s+/g, '')}`,
+            avatar: data.photoURL,
+            coins: data.coins || 0,
+            followers: data.followers || 0,
+            following: data.following || 0,
+            likes: data.likes || 0
+          });
+        }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+      });
+      return () => unsubscribe();
+    }
+  }, [firebaseUser]);
+
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS);
   const [showCoinToast, setShowCoinToast] = useState(false);
   const [lastTap, setLastTap] = useState(0);
@@ -154,13 +218,56 @@ export default function App() {
     setIsMessagesOpen(true);
   };
 
-  const handleLogout = () => {
-    setIsMenuOpen(false);
-    setCurrentView('home');
-    // In a real app, this would clear tokens/session
-    setShowCoinToast(true); // Reusing toast for feedback
-    setTimeout(() => setShowCoinToast(false), 2000);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMenuOpen(false);
+      setCurrentView('home');
+      setShowCoinToast(true);
+      setTimeout(() => setShowCoinToast(false), 2000);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
+
+  if (!isAuthReady) {
+    return (
+      <div className="h-screen w-full bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!firebaseUser) {
+    return (
+      <div className="h-screen w-full bg-black flex flex-col items-center justify-center p-6 text-center">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="mb-12"
+        >
+          <div className="w-24 h-24 bg-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-amber-500/20">
+            <Zap size={48} className="text-black" />
+          </div>
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tighter">TOKCOIN</h1>
+          <p className="text-gray-400 text-sm uppercase tracking-widest">Be Social. Get Paid.</p>
+        </motion.div>
+
+        <div className="w-full max-w-sm space-y-4">
+          <button 
+            onClick={signInWithGoogle}
+            className="w-full bg-white text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
+          >
+            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+            <span>Continue with Google</span>
+          </button>
+          <p className="text-[10px] text-gray-600 px-8">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const renderHome = () => (
     <div className="h-full w-full flex bg-[#050505]">
@@ -719,7 +826,7 @@ export default function App() {
 
         {currentView === 'settings' && (
           <div className="h-full w-full overflow-y-auto pb-20 scrollbar-hide bg-black">
-            <SettingsView onClose={() => setCurrentView('home')} />
+            <SettingsView onClose={() => setCurrentView('home')} user={user} />
           </div>
         )}
         

@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Fields:
+    //   - uid: string (required) - The unique ID of the user.
+    //   - displayName: string (optional) - The user's display name.
+    //   - email: string (required, email format) - The user's email address.
+    //   - photoURL: string (optional, url format) - The user's profile picture URL.
+    //   - role: string (required, enum: ['user', 'admin']) - The user's role.
+    //   - createdAt: timestamp (optional) - When the user profile was created.
+    //   - location: string (optional) - The user's location.
+    //   - phoneNumber: string (optional) - The user's phone number.
+    //
+    // Collection: /chats/{chatId}
+    // Fields:
+    //   - participants: list (required) - The UIDs of the participants.
+    //   - lastMessage: string (optional) - The content of the last message.
+    //   - lastMessageTime: timestamp (optional) - When the last message was sent.
+    //   - unreadCounts: map (optional) - A map of user UIDs to their unread message count.
+    //
+    // Collection: /chats/{chatId}/messages/{messageId}
+    // Fields:
+    //   - chatId: string (required) - The ID of the chat.
+    //   - senderId: string (required) - The UID of the sender.
+    //   - text: string (required) - The content of the message.
+    //   - type: string (required, enum: ['text', 'gif', 'image']) - The type of message.
+    //   - time: timestamp (required) - When the message was sent.
+    //   - replyTo: map (optional) - Information about the message being replied to.
+    //   - isEdited: bool (optional) - Whether the message has been edited.
+    //   - isRead: bool (optional) - Whether the message has been read.
+    //
+    // Collection: /users/{userId}/blocked/{blockedId}
+    // Fields:
+    //   - uid: string (required) - The UID of the blocked user.
+    //   - displayName: string (optional) - The name of the blocked user.
+    //   - blockedAt: timestamp (required) - When the block was created.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "push2playlive@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'displayName', 'email', 'photoURL', 'role', 'createdAt', 'location', 'phoneNumber']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['user', 'admin'] &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             (!('location' in data) || (data.location is string && data.location.size() < 100)) &&
+             (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() < 20));
+    }
+
+    function isValidChat(data) {
+      return hasOnlyAllowedFields(['participants', 'participantNames', 'participantPhotos', 'lastMessage', 'lastMessageAt', 'createdAt', 'otherUserName', 'otherUserPhoto', 'unreadCounts']) &&
+             data.participants is list && data.participants.size() >= 2 && data.participants.size() <= 10 &&
+             (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() < 1000)) &&
+             (!('unreadCounts' in data) || data.unreadCounts is map);
+    }
+
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['chatId', 'senderId', 'senderName', 'text', 'type', 'createdAt', 'replyTo', 'isEdited', 'isRead', 'updatedAt']) &&
+             data.senderId is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.type in ['text', 'gif', 'image'] &&
+             (!('replyTo' in data) || data.replyTo is map) &&
+             (!('isEdited' in data) || data.isEdited is bool) &&
+             (!('isRead' in data) || data.isRead is bool);
+    }
+
+    function isValidBlockedAccount(data) {
+      return hasOnlyAllowedFields(['uid', 'displayName', 'blockedAt']) &&
+             data.uid is string &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdmin());
+      allow create: if isAuthenticated() && isValidChat(request.resource.data) && (request.auth.uid in request.resource.data.participants || isAdmin());
+      allow update: if isAuthenticated() && isValidChat(request.resource.data) && (request.auth.uid in resource.data.participants || isAdmin());
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdmin());
+        allow create: if isAuthenticated() && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdmin());
+        allow update: if isAuthenticated() && isValidMessage(request.resource.data) && (request.auth.uid == resource.data.senderId || isAdmin());
+        allow delete: if isAuthenticated() && (request.auth.uid == resource.data.senderId || isAdmin());
+      }
+    }
+
+    match /users/{userId}/blocked/{blockedId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidBlockedAccount(request.resource.data);
+      allow update: if isOwner(userId) && isValidBlockedAccount(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+  }
+}

@@ -1,6 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock } from 'lucide-react';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  serverTimestamp, 
+  getDocs,
+  limit,
+  setDoc,
+  Timestamp
+} from 'firebase/firestore';
 
 interface MessagesViewProps {
   onClose: () => void;
@@ -15,7 +32,7 @@ const GIFS = [
 ];
 
 export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser }) => {
-  const [activeChat, setActiveChat] = useState<number | null>(null);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
@@ -25,77 +42,133 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [chats, setChats] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [chats, setChats] = useState([
-    { id: 1, name: 'Sarah Wilson', lastMsg: 'That video was hilarious! 😂', time: '2m ago', unread: 2, avatar: 'https://picsum.photos/seed/sarah/100/100' },
-    { id: 2, name: 'Mike Ross', lastMsg: 'Check out this crypto trend...', time: '1h ago', unread: 0, avatar: 'https://picsum.photos/seed/mike/100/100' },
-    { id: 3, name: 'CryptoKing', lastMsg: 'Sent you 100 TokCoins!', time: '3h ago', unread: 0, avatar: 'https://picsum.photos/seed/king/100/100' },
-    { id: 4, name: 'Emma Watson', lastMsg: 'Are you coming to the live?', time: '1d ago', unread: 0, avatar: 'https://picsum.photos/seed/emma/100/100' },
-  ]);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-  React.useEffect(() => {
-    if (initialUser) {
-      const existingChat = chats.find(c => c.name === initialUser);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Sync Chats
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const q = query(
+      collection(db, 'chats'),
+      where('participants', 'array-contains', auth.currentUser.uid),
+      orderBy('lastMessageAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const chatList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setChats(chatList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'chats');
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Messages
+  useEffect(() => {
+    if (!activeChat) {
+      setMessages([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'chats', activeChat, 'messages'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setMessages(msgList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `chats/${activeChat}/messages`);
+    });
+
+    return () => unsubscribe();
+  }, [activeChat]);
+
+  useEffect(() => {
+    if (initialUser && chats.length > 0) {
+      const existingChat = chats.find(c => c.otherUserName === initialUser);
       if (existingChat) {
         setActiveChat(existingChat.id);
-      } else {
-        handleStartNewChat(initialUser);
       }
     }
-  }, [initialUser]);
-
-  const [messages, setMessages] = useState([
-    { id: 1, text: 'Hey! How are you?', sender: 'them', time: '10:00 AM', replyTo: null },
-    { id: 2, text: 'I am good, thanks! Did you see my new video?', sender: 'me', time: '10:05 AM', replyTo: null },
-    { id: 3, text: 'Yes! It was amazing. The editing is top notch.', sender: 'them', time: '10:06 AM', replyTo: null },
-    { id: 4, text: 'Thanks! I used the new TokCoin filters.', sender: 'me', time: '10:07 AM', replyTo: null },
-    { id: 5, text: 'That video was hilarious! 😂', sender: 'them', time: '10:10 AM', replyTo: null },
-  ]);
+  }, [initialUser, chats]);
 
   const showPushNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleSendMessage = (e?: React.FormEvent, content?: string, type: 'text' | 'gif' = 'text') => {
+  const handleSendMessage = async (e?: React.FormEvent, content?: string, type: 'text' | 'gif' = 'text') => {
     if (e) e.preventDefault();
+    if (!auth.currentUser || !activeChat) return;
+
     const finalContent = content || messageText;
     if (!finalContent.trim()) return;
 
-    if (editingMessage) {
-      setMessages(messages.map(m => 
-        m.id === editingMessage.id 
-          ? { ...m, text: finalContent, isEdited: true } 
-          : m
-      ));
-      setEditingMessage(null);
-    } else {
-      const newMessage = {
-        id: Date.now(),
-        text: finalContent,
-        sender: 'me',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        replyTo: replyingTo ? { text: replyingTo.text, sender: replyingTo.sender } : null,
-        type,
-        isRead: false
-      };
+    try {
+      if (editingMessage) {
+        const msgRef = doc(db, 'chats', activeChat, 'messages', editingMessage.id);
+        await updateDoc(msgRef, {
+          text: finalContent,
+          isEdited: true,
+          updatedAt: serverTimestamp()
+        });
+        setEditingMessage(null);
+      } else {
+        const msgData = {
+          text: finalContent,
+          senderId: auth.currentUser.uid,
+          senderName: auth.currentUser.displayName || 'User',
+          createdAt: serverTimestamp(),
+          type,
+          replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, senderName: replyingTo.senderName } : null,
+          isRead: false
+        };
 
-      setMessages([...messages, newMessage]);
+        await addDoc(collection(db, 'chats', activeChat, 'messages'), msgData);
+        
+        // Update chat last message
+        const chatRef = doc(db, 'chats', activeChat);
+        await updateDoc(chatRef, {
+          lastMessage: type === 'gif' ? 'Sent a GIF' : finalContent,
+          lastMessageAt: serverTimestamp()
+        });
+      }
+
+      setMessageText('');
+      setReplyingTo(null);
+      setShowEmojiPicker(false);
+      setShowGifPicker(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `chats/${activeChat}/messages`);
     }
-
-    setMessageText('');
-    setReplyingTo(null);
-    setShowEmojiPicker(false);
-    setShowGifPicker(false);
-
-    // Simulate reply and notification
-    setTimeout(() => {
-      showPushNotification(`New message from ${chats.find(c => c.id === activeChat)?.name}`);
-    }, 1000);
   };
 
-  const handleDeleteMessage = (id: number) => {
-    setMessages(messages.filter(m => m.id !== id));
+  const handleDeleteMessage = async (id: string) => {
+    if (!activeChat) return;
+    try {
+      await deleteDoc(doc(db, 'chats', activeChat, 'messages', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `chats/${activeChat}/messages/${id}`);
+    }
   };
 
   const handleEditMessage = (msg: any) => {
@@ -105,38 +178,68 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     setShowGifPicker(false);
   };
 
-  const handleBlockUser = () => {
+  const handleBlockUser = async () => {
+    if (!auth.currentUser || !activeChat) return;
     const activeChatData = chats.find(c => c.id === activeChat);
-    if (activeChatData) {
-      showPushNotification(`${activeChatData.name} has been blocked`);
-      setChats(chats.filter(c => c.id !== activeChat));
+    if (!activeChatData) return;
+
+    const otherUserId = activeChatData.participants.find((uid: string) => uid !== auth.currentUser?.uid);
+    
+    try {
+      // Add to blocked accounts
+      await setDoc(doc(db, 'users', auth.currentUser.uid, 'blocked', otherUserId), {
+        uid: otherUserId,
+        displayName: activeChatData.otherUserName || 'User',
+        blockedAt: serverTimestamp()
+      });
+
+      showPushNotification(`${activeChatData.otherUserName || 'User'} has been blocked`);
       setActiveChat(null);
       setShowChatMenu(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}/blocked/${otherUserId}`);
     }
   };
 
-  const handleStartNewChat = (name: string) => {
-    const newChat = {
-      id: Date.now(),
-      name,
-      lastMsg: 'Started a new conversation',
-      time: 'Just now',
-      unread: 0,
-      avatar: `https://picsum.photos/seed/${name}/100/100`
-    };
-    setChats([newChat, ...chats]);
-    setActiveChat(newChat.id);
-    setIsNewChatOpen(false);
+  const handleStartNewChat = async (otherUser: { uid: string, displayName: string, photoURL: string }) => {
+    if (!auth.currentUser) return;
+
+    // Check if chat already exists
+    const existingChat = chats.find(c => c.participants.includes(otherUser.uid));
+    if (existingChat) {
+      setActiveChat(existingChat.id);
+      setIsNewChatOpen(false);
+      return;
+    }
+
+    try {
+      const chatData = {
+        participants: [auth.currentUser.uid, otherUser.uid],
+        participantNames: [auth.currentUser.displayName || 'User', otherUser.displayName],
+        participantPhotos: [auth.currentUser.photoURL || '', otherUser.photoURL],
+        lastMessage: 'Started a new conversation',
+        lastMessageAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        // For easier querying/displaying in this simple app
+        otherUserName: otherUser.displayName,
+        otherUserPhoto: otherUser.photoURL
+      };
+
+      const docRef = await addDoc(collection(db, 'chats'), chatData);
+      setActiveChat(docRef.id);
+      setIsNewChatOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'chats');
+    }
   };
 
   const filteredChats = chats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMsg.toLowerCase().includes(searchQuery.toLowerCase())
+    (chat.otherUserName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (chat.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleOpenChat = (chatId: number) => {
+  const handleOpenChat = (chatId: string) => {
     setActiveChat(chatId);
-    setChats(chats.map(c => c.id === chatId ? { ...c, unread: 0 } : c));
   };
 
   return (
@@ -215,7 +318,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     className="w-full p-4 flex items-center gap-4 hover:bg-white/5 transition-colors border-b border-[#9298a6]"
                   >
                     <div className="relative">
-                      <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={chat.otherUserPhoto} alt={chat.otherUserName} className="w-12 h-12 rounded-full object-cover" referrerPolicy="no-referrer" />
                       {chat.unread > 0 && (
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-pink-500 rounded-full border-2 border-[#9298a6] flex items-center justify-center text-[10px] font-bold text-white">
                           {chat.unread}
@@ -224,10 +327,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     </div>
                     <div className="flex-1 text-left">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-white font-bold text-sm">{chat.name}</span>
-                        <span className="text-gray-500 text-[10px]">{chat.time}</span>
+                        <span className="text-white font-bold text-sm">{chat.otherUserName}</span>
+                        <span className="text-gray-500 text-[10px]">
+                          {chat.lastMessageAt instanceof Timestamp ? chat.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                        </span>
                       </div>
-                      <p className="text-gray-400 text-xs truncate">{chat.lastMsg}</p>
+                      <p className="text-gray-400 text-xs truncate">{chat.lastMessage}</p>
                     </div>
                   </button>
                 ))}
@@ -248,13 +353,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     <ChevronLeft size={24} />
                   </button>
                   <img 
-                    src={chats.find(c => c.id === activeChat)?.avatar} 
+                    src={chats.find(c => c.id === activeChat)?.otherUserPhoto} 
                     alt="Avatar" 
                     className="w-10 h-10 rounded-full object-cover" 
                     referrerPolicy="no-referrer" 
                   />
                   <div>
-                    <h3 className="text-white font-bold text-sm">{chats.find(c => c.id === activeChat)?.name}</h3>
+                    <h3 className="text-white font-bold text-sm">{chats.find(c => c.id === activeChat)?.otherUserName}</h3>
                     <p className="text-green-400 text-[10px]">Online</p>
                   </div>
                 </div>
@@ -297,7 +402,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                 {messages.map((msg) => (
                   <div 
                     key={msg.id} 
-                    className={`flex flex-col group ${msg.sender === 'me' ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col group ${msg.senderId === auth.currentUser?.uid ? 'items-end' : 'items-start'}`}
                   >
                     {msg.replyTo && (
                       <div className="bg-white/5 px-3 py-1 rounded-t-lg text-[10px] text-gray-500 mb-[-4px] border-l-2 border-pink-500 max-w-[70%] truncate">
@@ -305,41 +410,44 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                       </div>
                     )}
                     <div className="flex items-center gap-2 max-w-[85%]">
-                      {msg.sender === 'me' && (
+                      {msg.senderId === auth.currentUser?.uid && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
                           <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
                           <button onClick={() => handleEditMessage(msg)} className="text-gray-400 hover:text-blue-400 p-1 transition-colors" title="Edit"><MoreVertical size={14} /></button>
                           <button onClick={() => handleDeleteMessage(msg.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors" title="Delete"><Trash2 size={14} /></button>
                         </div>
                       )}
-                      <div className={`p-3 rounded-2xl text-sm ${msg.sender === 'me' ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
-                        {(msg as any).type === 'gif' ? (
+                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === auth.currentUser?.uid ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                        {msg.type === 'gif' ? (
                           <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" />
                         ) : (
                           <div className="flex flex-col">
                             <span>{msg.text}</span>
-                            {(msg as any).isEdited && (
+                            {msg.isEdited && (
                               <span className="text-[8px] opacity-50 mt-1 italic">Edited</span>
                             )}
                           </div>
                         )}
                       </div>
-                      {msg.sender === 'them' && (
+                      {msg.senderId !== auth.currentUser?.uid && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
                           <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-[8px] text-gray-600 uppercase tracking-widest">{msg.time}</span>
-                      {msg.sender === 'me' && (
+                      <span className="text-[8px] text-gray-600 uppercase tracking-widest">
+                        {msg.createdAt instanceof Timestamp ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                      </span>
+                      {msg.senderId === auth.currentUser?.uid && (
                         <span className="text-[8px] text-pink-500 font-bold">
-                          {(msg as any).isRead ? 'Read' : 'Sent'}
+                          {msg.isRead ? 'Read' : 'Sent'}
                         </span>
                       )}
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Edit/Reply Indicator */}
@@ -469,18 +577,23 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   <h3 className="text-white font-bold">New Message</h3>
                   <button onClick={() => setIsNewChatOpen(false)} className="text-gray-500"><X size={20} /></button>
                 </div>
-                <div className="p-4 space-y-2">
-                  {['John Doe', 'Alice Smith', 'Bob Builder', 'Charlie Brown'].map(name => (
-                    <button 
-                      key={name}
-                      onClick={() => handleStartNewChat(name)}
-                      className="w-full p-3 flex items-center gap-3 hover:bg-white/5 rounded-xl transition-colors text-left"
-                    >
-                      <img src={`https://picsum.photos/seed/${name}/100/100`} alt={name} className="w-10 h-10 rounded-full" />
-                      <span className="text-white text-sm font-medium">{name}</span>
-                    </button>
-                  ))}
-                </div>
+                  <div className="p-4 space-y-2">
+                    {[
+                      { uid: 'sarah_uid', displayName: 'Sarah Wilson', photoURL: 'https://picsum.photos/seed/sarah/100/100' },
+                      { uid: 'mike_uid', displayName: 'Mike Ross', photoURL: 'https://picsum.photos/seed/mike/100/100' },
+                      { uid: 'king_uid', displayName: 'CryptoKing', photoURL: 'https://picsum.photos/seed/king/100/100' },
+                      { uid: 'emma_uid', displayName: 'Emma Watson', photoURL: 'https://picsum.photos/seed/emma/100/100' }
+                    ].map(user => (
+                      <button 
+                        key={user.uid}
+                        onClick={() => handleStartNewChat(user)}
+                        className="w-full p-3 flex items-center gap-3 hover:bg-white/5 rounded-xl transition-colors text-left"
+                      >
+                        <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full" />
+                        <span className="text-white text-sm font-medium">{user.displayName}</span>
+                      </button>
+                    ))}
+                  </div>
               </motion.div>
             </motion.div>
           )}

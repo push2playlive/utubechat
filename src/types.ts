@@ -24,6 +24,7 @@ export interface User {
   following: number;
   likes: number;
   avatar: string;
+  role?: 'admin' | 'user';
 }
 
 export interface PartnerSite {

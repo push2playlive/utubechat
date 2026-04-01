@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin } from 'lucide-react';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { doc, updateDoc, collection, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 interface SettingsViewProps {
   onClose: () => void;
+  user: any;
 }
 
 type SettingsSubView = 'main' | 'profile' | 'notifications' | 'security' | 'privacy' | 'payments' | 'privacy-policy' | 'blocked' | 'appearance' | 'language' | 'help' | 'about';
@@ -43,26 +46,62 @@ const SETTINGS_GROUPS = [
   }
 ];
 
-export function SettingsView({ onClose }: SettingsViewProps) {
+export function SettingsView({ onClose, user }: SettingsViewProps) {
   const [subView, setSubView] = useState<SettingsSubView>('main');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [blockedAccounts, setBlockedAccounts] = useState([
-    { id: 1, name: 'SpamBot 3000', avatar: 'https://picsum.photos/seed/bot/100/100' },
-    { id: 2, name: 'TrollUser', avatar: 'https://picsum.photos/seed/troll/100/100' },
-  ]);
+  const [blockedAccounts, setBlockedAccounts] = useState<any[]>([]);
+  
+  const [displayName, setDisplayName] = useState(user.name);
+  const [email, setEmail] = useState(user.email || '');
+  const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (!auth.currentUser) return;
+    
+    const blockedRef = collection(db, 'users', auth.currentUser.uid, 'blocked');
+    const unsubscribe = onSnapshot(blockedRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setBlockedAccounts(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}/blocked`);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSave = async () => {
+    if (!auth.currentUser) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        displayName,
+        email,
+        phone,
+        location,
+        updatedAt: serverTimestamp()
+      });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
-    }, 1000);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleUnblock = (id: number) => {
-    setBlockedAccounts(prev => prev.filter(acc => acc.id !== id));
+  const handleUnblock = async (id: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'blocked', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${auth.currentUser.uid}/blocked/${id}`);
+    }
   };
 
   const renderMain = () => (
@@ -144,7 +183,7 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           </button>
         </div>
         <div className="text-center">
-          <h4 className="text-white font-bold">@utubechat3</h4>
+          <h4 className="text-white font-bold">{user.username}</h4>
           <p className="text-xs text-gray-500">Member since March 2026</p>
         </div>
       </div>
@@ -154,7 +193,12 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Display Name</label>
           <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
             <User size={18} className="text-gray-500" />
-            <input type="text" defaultValue="Push2Play Live" className="bg-transparent text-white text-sm outline-none flex-1" />
+            <input 
+              type="text" 
+              value={displayName} 
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none flex-1" 
+            />
           </div>
         </div>
 
@@ -162,7 +206,12 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Email Address</label>
           <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
             <Mail size={18} className="text-gray-500" />
-            <input type="email" defaultValue="push2playlive@gmail.com" className="bg-transparent text-white text-sm outline-none flex-1" />
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none flex-1" 
+            />
           </div>
         </div>
 
@@ -170,7 +219,12 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Phone Number</label>
           <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
             <Phone size={18} className="text-gray-500" />
-            <input type="tel" defaultValue="+1 (555) 000-0000" className="bg-transparent text-white text-sm outline-none flex-1" />
+            <input 
+              type="tel" 
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none flex-1" 
+            />
           </div>
         </div>
 
@@ -178,7 +232,12 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Location</label>
           <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
             <MapPin size={18} className="text-gray-500" />
-            <input type="text" defaultValue="New York, USA" className="bg-transparent text-white text-sm outline-none flex-1" />
+            <input 
+              type="text" 
+              value={location} 
+              onChange={(e) => setLocation(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none flex-1" 
+            />
           </div>
         </div>
       </div>
@@ -351,8 +410,8 @@ export function SettingsView({ onClose }: SettingsViewProps) {
                 {blockedAccounts.map((account) => (
                   <div key={account.id} className="p-4 flex items-center justify-between border-b border-[#9298a6] last:border-0">
                     <div className="flex items-center gap-3">
-                      <img src={account.avatar} alt={account.name} className="w-10 h-10 rounded-full object-cover" />
-                      <span className="text-sm text-white font-medium">{account.name}</span>
+                      <img src={account.photoURL || `https://picsum.photos/seed/${account.id}/100/100`} alt={account.displayName} className="w-10 h-10 rounded-full object-cover" />
+                      <span className="text-sm text-white font-medium">{account.displayName}</span>
                     </div>
                     <button 
                       onClick={() => handleUnblock(account.id)}
