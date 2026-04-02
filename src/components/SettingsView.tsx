@@ -3,10 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, collection, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { TokCoin } from './TokCoin';
 
 interface SettingsViewProps {
   onClose: () => void;
   user: any;
+  onTopUp?: () => void;
+  initialSubView?: SettingsSubView;
 }
 
 type SettingsSubView = 'main' | 'profile' | 'notifications' | 'security' | 'privacy' | 'payments' | 'privacy-policy' | 'blocked' | 'appearance' | 'language' | 'help' | 'about';
@@ -46,8 +49,8 @@ const SETTINGS_GROUPS = [
   }
 ];
 
-export function SettingsView({ onClose, user }: SettingsViewProps) {
-  const [subView, setSubView] = useState<SettingsSubView>('main');
+export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }: SettingsViewProps) {
+  const [subView, setSubView] = useState<SettingsSubView>(initialSubView);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [blockedAccounts, setBlockedAccounts] = useState<any[]>([]);
@@ -358,12 +361,25 @@ export function SettingsView({ onClose, user }: SettingsViewProps) {
         {subView === 'payments' && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 space-y-6">
             <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6 text-center">
-              <CreditCard size={48} className="mx-auto mb-4 text-purple-400 opacity-50" />
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                <CreditCard size={32} className="text-purple-400" />
+              </div>
               <h3 className="text-white font-bold mb-2">TokCoin Balance</h3>
-              <p className="text-3xl font-bold text-amber-500">1,250 🪙</p>
-              <button className="mt-6 w-full bg-purple-600 text-white font-bold py-3 rounded-2xl hover:bg-purple-500 transition-colors">
-                Withdraw Funds
-              </button>
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <TokCoin size={24} />
+                <p className="text-3xl font-bold text-amber-500">{user.coins.toLocaleString()}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => onTopUp?.()}
+                  className="bg-amber-500 text-black font-bold py-3 rounded-2xl hover:bg-amber-400 transition-colors text-sm"
+                >
+                  Buy Coins
+                </button>
+                <button className="bg-purple-600 text-white font-bold py-3 rounded-2xl hover:bg-purple-500 transition-colors text-sm">
+                  Withdraw
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

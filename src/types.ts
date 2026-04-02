@@ -34,4 +34,4 @@ export interface PartnerSite {
   logo?: string;
 }
 
-export type View = 'home' | 'discover' | 'create' | 'shop' | 'profile' | 'partners' | 'inbox' | 'settings' | 'mentors';
+export type View = 'home' | 'discover' | 'create' | 'shop' | 'profile' | 'partners' | 'inbox' | 'settings' | 'mentors' | 'ad-center';

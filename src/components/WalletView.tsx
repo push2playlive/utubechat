@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowUpRight, ArrowDownLeft, RefreshCw, Coins, Wallet, ChevronRight, Info, Copy, Check, QrCode } from 'lucide-react';
 import { User } from '../types';
 import { commandNexusService, CryptoAsset } from '../services/commandNexusService';
+import { TokCoin } from './TokCoin';
 
 interface WalletViewProps {
   user: User;
@@ -99,7 +100,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
               <div>
                 <p className="text-gray-500 text-xs font-medium mb-1">Total TokCoins</p>
                 <div className="flex items-center gap-2">
-                  <Coins className="text-yellow-500" size={24} />
+                  <TokCoin size={24} />
                   <span className="text-3xl font-bold text-white">{user.coins.toLocaleString()}</span>
                 </div>
               </div>

@@ -35,7 +35,9 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
   const [showEffects, setShowEffects] = useState(false);
   const [isUploadingEffect, setIsUploadingEffect] = useState(false);
   const [activeFilter, setActiveFilter] = useState('none');
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioTrack, setAudioTrack] = useState<{ url: string; name: string; duration: number } | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [timelineZoom, setTimelineZoom] = useState(1);
   
   // AI Tools State
   const [isAILoading, setIsAILoading] = useState(false);
@@ -68,6 +70,10 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
         if (video.currentTime >= clip.end) {
           video.currentTime = clip.start;
         }
+        
+        // Calculate global current time based on previous clips
+        const previousDuration = clips.slice(0, activeClipIndex).reduce((acc, c) => acc + (c.end - c.start), 0);
+        setCurrentTime(previousDuration + (video.currentTime - clip.start));
       };
 
       video.addEventListener('timeupdate', handleTimeUpdate);
@@ -174,8 +180,14 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
         setActiveClipIndex(clips.length);
         setStep('edit');
       } else if (file.type.startsWith('audio/')) {
-        setAudioUrl(url);
-        alert('Audio uploaded! You can now add it to your clips.');
+        const tempAudio = new Audio(url);
+        tempAudio.onloadedmetadata = () => {
+          setAudioTrack({
+            url,
+            name: file.name,
+            duration: tempAudio.duration
+          });
+        };
       }
     }
   };
@@ -303,7 +315,13 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
           const blob = new Blob([bytes], { type: 'audio/wav' });
-          setAIResult(URL.createObjectURL(blob));
+          const url = URL.createObjectURL(blob);
+          setAudioTrack({
+            url,
+            name: 'AI Generated Track',
+            duration: 30 // Default for AI music
+          });
+          setAIResult(url);
         }
       } else if (activeAITool === 'image') {
         const url = await generateHQImage(aiPrompt, hqImageSize);
@@ -555,9 +573,9 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                 />
               )}
               
-              {audioUrl && (
-                <div className="absolute top-4 left-4 bg-amber-500 text-black text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                  <Music size={12} /> Audio Attached
+              {audioTrack && (
+                <div className="absolute top-4 left-4 bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                  <Music size={12} /> {audioTrack.name}
                 </div>
               )}
               
@@ -620,65 +638,123 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
               </div>
             </div>
 
-            {/* Timeline / Clip List */}
-            <div className="h-48 bg-gray-900 p-4 flex flex-col gap-4 relative">
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {clips.map((clip, i) => (
-                  <div 
-                    key={clip.id}
-                    onClick={() => setActiveClipIndex(i)}
-                    className={`relative w-24 aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer group ${
-                      activeClipIndex === i ? 'border-amber-500 scale-105 z-10' : 'border-transparent opacity-60'
-                    }`}
-                  >
-                    <video src={clip.url} className="w-full h-full object-cover" />
-                    <div className="absolute bottom-1 right-1 bg-black/60 px-1 rounded text-[8px] text-white">
-                      {(clip.end - clip.start).toFixed(1)}s
-                    </div>
-                    
-                    {/* Reorder Controls */}
-                    {activeClipIndex === i && (
-                      <div className="absolute inset-x-0 top-0 flex justify-between p-1 bg-black/40">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleMoveClip(i, 'left'); }}
-                          disabled={i === 0}
-                          className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center disabled:opacity-0"
-                        >
-                          <ChevronRight size={12} className="rotate-180" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleMoveClip(i, 'right'); }}
-                          disabled={i === clips.length - 1}
-                          className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center disabled:opacity-0"
-                        >
-                          <ChevronRight size={12} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <button 
-                  onClick={() => setStep('capture')}
-                  className="w-20 aspect-[3/4] rounded-lg bg-gray-800 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#9298a6] text-gray-500 hover:text-white hover:border-white transition-all shrink-0"
-                >
-                  <PlusCircle size={24} />
-                  <span className="text-[10px] font-bold">Add Clip</span>
-                </button>
+            {/* Timeline Area */}
+            <div className="h-64 bg-[#0a0a0a] border-t border-white/10 flex flex-col relative overflow-hidden">
+              {/* Timeline Header / Ruler */}
+              <div className="h-8 border-b border-white/5 flex items-end px-4 relative">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-[10px] text-gray-500 font-mono">
+                    {currentTime.toFixed(2)}s / {clips.reduce((acc, c) => acc + (c.end - c.start), 0).toFixed(2)}s
+                  </span>
+                </div>
               </div>
 
-              {/* Trimming Slider (Simplified) */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                  <span>{clips[activeClipIndex].start.toFixed(1)}s</span>
-                  <span>Trim Clip</span>
-                  <span>{clips[activeClipIndex].end.toFixed(1)}s</span>
+              {/* Tracks Container */}
+              <div className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide relative px-4 py-4 flex flex-col gap-4">
+                {/* Video Track */}
+                <div className="relative h-16 flex items-center">
+                  <div className="absolute left-0 top-0 bottom-0 flex items-center gap-0.5">
+                    {clips.map((clip, i) => (
+                      <motion.div 
+                        key={clip.id}
+                        onClick={() => setActiveClipIndex(i)}
+                        layoutId={clip.id}
+                        className={`relative h-14 rounded-md overflow-hidden border-2 transition-all cursor-pointer group shrink-0 ${
+                          activeClipIndex === i ? 'border-amber-500 ring-2 ring-amber-500/20 z-10' : 'border-white/10 opacity-60 hover:opacity-100'
+                        }`}
+                        style={{ width: (clip.end - clip.start) * 40 * timelineZoom }}
+                      >
+                        <video src={clip.url} className="w-full h-full object-cover pointer-events-none" />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                        
+                        {/* Trim Handles for Active Clip */}
+                        {activeClipIndex === i && (
+                          <>
+                            <div className="absolute left-0 top-0 bottom-0 w-2 bg-amber-500 cursor-ew-resize flex items-center justify-center">
+                              <div className="w-0.5 h-4 bg-white/50 rounded-full" />
+                            </div>
+                            <div className="absolute right-0 top-0 bottom-0 w-2 bg-amber-500 cursor-ew-resize flex items-center justify-center">
+                              <div className="w-0.5 h-4 bg-white/50 rounded-full" />
+                            </div>
+                          </>
+                        )}
+                        
+                        <div className="absolute bottom-1 left-1 bg-black/60 px-1 rounded text-[8px] text-white font-mono">
+                          {(clip.end - clip.start).toFixed(1)}s
+                        </div>
+                      </motion.div>
+                    ))}
+                    
+                    <button 
+                      onClick={() => setStep('capture')}
+                      className="h-14 w-14 rounded-md bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center text-gray-500 hover:text-white hover:border-white transition-all shrink-0"
+                    >
+                      <PlusCircle size={20} />
+                    </button>
+                  </div>
                 </div>
-                <div className="relative h-6 bg-gray-800 rounded-full overflow-hidden">
+
+                {/* Audio Track */}
+                <div className="relative h-10 flex items-center">
+                  {audioTrack ? (
+                    <div 
+                      className="h-8 bg-blue-500/20 border border-blue-500/40 rounded-md flex items-center px-3 gap-2 overflow-hidden relative group"
+                      style={{ width: Math.min(audioTrack.duration, clips.reduce((acc, c) => acc + (c.end - c.start), 0)) * 40 * timelineZoom }}
+                    >
+                      <Music2 size={12} className="text-blue-400 shrink-0" />
+                      <span className="text-[10px] text-blue-200 font-medium truncate">{audioTrack.name}</span>
+                      <button 
+                        onClick={() => setAudioTrack(null)}
+                        className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-red-400"
+                      >
+                        <X size={12} />
+                      </button>
+                      
+                      {/* Waveform Visualization (Mock) */}
+                      <div className="absolute inset-x-0 bottom-0 h-4 flex items-end gap-0.5 px-2 opacity-30">
+                        {Array.from({ length: 20 }).map((_, i) => (
+                          <div 
+                            key={i} 
+                            className="flex-1 bg-blue-400 rounded-t-sm" 
+                            style={{ height: `${Math.random() * 100}%` }} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => { setStep('ai-tools'); setActiveAITool('music'); }}
+                      className="h-8 px-4 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center gap-2 text-gray-500 hover:text-white transition-all text-[10px] font-bold"
+                    >
+                      <PlusCircle size={14} /> Add Audio Track
+                    </button>
+                  )}
+                </div>
+
+                {/* Playhead */}
+                <div 
+                  className="absolute top-0 bottom-0 w-0.5 bg-white z-20 pointer-events-none"
+                  style={{ left: (currentTime * 40 * timelineZoom) + 16 }}
+                >
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 -translate-y-1/2" />
+                </div>
+              </div>
+
+              {/* Active Clip Trim Controls */}
+              <div className="px-4 py-2 bg-black/60 border-t border-white/5 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Trim Active Clip</span>
+                  <div className="flex gap-4 text-[10px] font-mono text-amber-500">
+                    <span>IN: {clips[activeClipIndex].start.toFixed(2)}s</span>
+                    <span>OUT: {clips[activeClipIndex].end.toFixed(2)}s</span>
+                  </div>
+                </div>
+                <div className="relative h-4 bg-gray-800 rounded-full overflow-hidden">
                   <input 
                     type="range" 
                     min={0} 
                     max={clips[activeClipIndex].duration} 
-                    step={0.1}
+                    step={0.01}
                     value={clips[activeClipIndex].start}
                     onChange={(e) => handleTrim(parseFloat(e.target.value), clips[activeClipIndex].end)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
@@ -687,17 +763,56 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                     type="range" 
                     min={0} 
                     max={clips[activeClipIndex].duration} 
-                    step={0.1}
+                    step={0.01}
                     value={clips[activeClipIndex].end}
                     onChange={(e) => handleTrim(clips[activeClipIndex].start, parseFloat(e.target.value))}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                   />
                   <div 
-                    className="absolute top-0 bottom-0 bg-amber-500/40 border-x-2 border-amber-500"
+                    className="absolute top-0 bottom-0 bg-amber-500 border-x-2 border-white/50"
                     style={{ 
                       left: `${(clips[activeClipIndex].start / clips[activeClipIndex].duration) * 100}%`,
                       right: `${100 - (clips[activeClipIndex].end / clips[activeClipIndex].duration) * 100}%`
                     }}
+                  />
+                </div>
+              </div>
+
+              {/* Timeline Controls */}
+              <div className="h-12 border-t border-white/5 flex items-center justify-between px-4 bg-black/40">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="text-white hover:text-amber-500 transition-colors"
+                  >
+                    {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                  </button>
+                  <button 
+                    onClick={handleSplit}
+                    className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <Scissors size={16} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Split</span>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClip(activeClipIndex)}
+                    className="flex items-center gap-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 font-bold">ZOOM</span>
+                  <input 
+                    type="range" 
+                    min={0.5} 
+                    max={3} 
+                    step={0.1}
+                    value={timelineZoom}
+                    onChange={(e) => setTimelineZoom(parseFloat(e.target.value))}
+                    className="w-24 accent-amber-500"
                   />
                 </div>
               </div>

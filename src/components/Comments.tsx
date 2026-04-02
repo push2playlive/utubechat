@@ -95,38 +95,27 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete, onReply })
             Replying to {comment.replyTo.user}: {comment.replyTo.text}
           </div>
         )}
-        <div className="text-white text-sm leading-relaxed">
-          {comment.type === 'gif' ? (
-            <img src={comment.text} alt="GIF" className="rounded-lg max-w-[150px] mt-1" />
-          ) : (
-            comment.text
-          )}
+        <div className="flex items-start justify-between gap-4">
+          <div className="text-white text-sm leading-relaxed flex-1">
+            {comment.type === 'gif' ? (
+              <img src={comment.text} alt="GIF" className="rounded-lg max-w-[150px] mt-1" />
+            ) : (
+              comment.text
+            )}
+          </div>
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <button 
+              onClick={handleLike}
+              className={`transition-all active:scale-125 ${
+                vote === 'like' ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
+              }`}
+            >
+              <Heart size={16} fill={vote === 'like' ? 'currentColor' : 'none'} />
+            </button>
+            <span className="text-[10px] text-gray-500 font-medium">{likes}</span>
+          </div>
         </div>
         <div className="flex items-center gap-4 mt-2">
-          <button 
-            onClick={handleLike}
-            className={`flex items-center gap-1 text-[10px] transition-colors ${
-              vote === 'like' ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-            }`}
-          >
-            <ThumbsUp size={12} fill={vote === 'like' ? 'currentColor' : 'none'} /> {likes}
-          </button>
-          <button 
-            onClick={handleDislike}
-            className={`flex items-center gap-1 text-[10px] transition-colors ${
-              vote === 'dislike' ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
-            }`}
-          >
-            <ThumbsDown size={12} fill={vote === 'dislike' ? 'currentColor' : 'none'} /> {dislikes}
-          </button>
-          <button 
-            onClick={handleHeart}
-            className={`flex items-center gap-1 text-[10px] transition-colors ${
-              isHearted ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'
-            }`}
-          >
-            <Heart size={12} fill={isHearted ? 'currentColor' : 'none'} /> {hearts}
-          </button>
           <button 
             onClick={() => onReply(comment)}
             className="text-gray-500 text-[10px] hover:text-white transition-colors flex items-center gap-1"

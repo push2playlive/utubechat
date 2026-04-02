@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Home, Search, Plus, MessageCircle, User } from 'lucide-react';
+import { Home, Search, Plus, MessageCircle, User, Megaphone } from 'lucide-react';
 import { View } from '../types';
 
 interface BottomNavProps {
@@ -12,6 +12,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
   const navItems: { view: View; icon: React.ReactNode; label: string }[] = [
     { view: 'home', icon: <Home size={20} />, label: 'Home' },
     { view: 'discover', icon: <Search size={20} />, label: 'Discover' },
+    { view: 'ad-center', icon: <Megaphone size={20} />, label: 'Ads' },
     { view: 'create', icon: <Plus size={24} />, label: 'Create' },
     { view: 'inbox', icon: <MessageCircle size={20} />, label: 'Inbox' },
     { view: 'profile', icon: <User size={20} />, label: 'Profile' },

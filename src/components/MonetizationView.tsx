@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { X, DollarSign, TrendingUp, BarChart3, Globe, MessageCircle, Flame, Play, ArrowUpRight, CheckCircle, Coins, Sparkles } from 'lucide-react';
 import { PARTNER_SITES } from '../constants';
+import { TokCoin } from './TokCoin';
 
 interface MonetizationViewProps {
   onClose: () => void;
@@ -46,7 +47,10 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black">950</span>
-              <span className="text-lg font-bold opacity-70">TokCoins</span>
+              <div className="flex items-center gap-1">
+                <TokCoin size={20} />
+                <span className="text-lg font-bold opacity-70">TokCoins</span>
+              </div>
             </div>
             <div className="mt-4 flex items-center gap-2 bg-black/10 w-fit px-3 py-1 rounded-full">
               <TrendingUp size={14} />
@@ -121,7 +125,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                     <span className={`text-sm ${item.done ? 'text-gray-500 line-through' : 'text-white'}`}>{item.task}</span>
                   </div>
                   <div className="flex items-center gap-1 text-yellow-500 font-bold text-xs">
-                    <Coins size={12} />
+                    <TokCoin size={12} />
                     +{item.reward}
                   </div>
                 </div>

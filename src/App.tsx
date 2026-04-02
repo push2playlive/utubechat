@@ -18,6 +18,9 @@ import { SettingsView } from './components/SettingsView';
 import { AIAssistant } from './components/AIAssistant';
 import { Comments } from './components/Comments';
 import { DiscoverView } from './components/DiscoverView';
+import { AdCenterView } from './components/AdCenterView';
+import { TokCoin } from './components/TokCoin';
+import { TopUpModal } from './components/TopUpModal';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
 import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap } from 'lucide-react';
@@ -47,6 +50,16 @@ export default function App() {
   const [isTuningMode, setIsTuningMode] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<User>(CURRENT_USER);
+  const [miniPlayerVideo, setMiniPlayerVideo] = useState<Video | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [selectedAdVideoId, setSelectedAdVideoId] = useState<string | null>(null);
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+  const [initialSettingsSubView, setInitialSettingsSubView] = useState<'main' | 'profile' | 'payments'>('main');
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
   
   // Firebase Auth Listener
   useEffect(() => {
@@ -153,6 +166,65 @@ export default function App() {
   }, [firebaseUser]);
 
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('video_toggle_play'));
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          setIsMuted(prev => !prev);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (activeVideoIndex > 0) scrollToVideo(activeVideoIndex - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (activeVideoIndex < videos.length - 1) scrollToVideo(activeVideoIndex + 1);
+          break;
+        case 'KeyF':
+          e.preventDefault();
+          // Toggle fullscreen for active video
+          window.dispatchEvent(new CustomEvent('video_toggle_fullscreen'));
+          break;
+        case 'KeyP':
+          e.preventDefault();
+          // Toggle PiP for active video
+          window.dispatchEvent(new CustomEvent('video_toggle_pip'));
+          break;
+        case 'Slash':
+          if (e.shiftKey) { // '?' key
+            e.preventDefault();
+            setShowShortcutsHelp(prev => !prev);
+          }
+          break;
+        case 'Escape':
+          if (showShortcutsHelp) {
+            e.preventDefault();
+            setShowShortcutsHelp(false);
+          }
+          break;
+      }
+      
+      // Number keys 0-9 for seeking
+      if (e.code.startsWith('Digit')) {
+        const digit = parseInt(e.code.replace('Digit', ''));
+        if (!isNaN(digit)) {
+          window.dispatchEvent(new CustomEvent('video_seek_percent', { detail: digit * 10 }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeVideoIndex, videos.length]);
   const [showCoinToast, setShowCoinToast] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const [showHeart, setShowHeart] = useState({ show: false, x: 0, y: 0 });
@@ -199,6 +271,37 @@ export default function App() {
       }
     }
     setLastTap(now);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+      setIsPulling(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling) return;
+    const touchY = e.touches[0].clientY;
+    const distance = touchY - touchStartY.current;
+    if (distance > 0 && distance < 150) {
+      setPullDistance(distance);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isPulling && pullDistance > 80) {
+      setIsRefreshing(true);
+      // Simulate refresh
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setPullDistance(0);
+        setIsPulling(false);
+      }, 1500);
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
   };
 
   const handleScroll = () => {
@@ -293,6 +396,9 @@ export default function App() {
   const handleMessageClick = (author: string) => {
     setInitialMessageUser(author);
     setIsMessagesOpen(true);
+    if (videos[activeVideoIndex]) {
+      setMiniPlayerVideo(videos[activeVideoIndex]);
+    }
   };
 
   const handleLogout = async () => {
@@ -392,6 +498,9 @@ export default function App() {
         ref={containerRef}
         onScroll={handleScroll}
         onClick={handleDoubleTap}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className="flex-1 h-screen overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black relative"
       >
         {videos.map((video, index) => (
@@ -399,11 +508,18 @@ export default function App() {
             key={video.id} 
             video={video} 
             isActive={index === activeVideoIndex && currentView === 'home'} 
+            isMuted={isMuted}
+            setIsMuted={setIsMuted}
             onPrev={() => index > 0 && scrollToVideo(index - 1)}
             onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
             onLike={(isLiked) => handleLike(video.id, isLiked)}
             onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
             onMessageClick={handleMessageClick}
+            onMiniPlayer={(v) => setMiniPlayerVideo(v)}
+            onPromoteClick={(videoId) => {
+              setSelectedAdVideoId(videoId);
+              setCurrentView('ad-center');
+            }}
             loop={true}
           />
         ))}
@@ -473,8 +589,22 @@ export default function App() {
         </div>
 
         <div className="flex gap-2 w-full max-w-xs mb-8">
-          <button className="flex-1 bg-amber-500 text-black py-2 rounded-md font-semibold hover:bg-amber-400 transition-colors">Edit Profile</button>
-          <button className="bg-gray-800 px-4 py-2 rounded-md font-semibold hover:bg-gray-700 transition-colors">
+          <button 
+            onClick={() => {
+              setInitialSettingsSubView('profile');
+              setCurrentView('settings');
+            }}
+            className="flex-1 bg-amber-500 text-black py-2 rounded-md font-semibold hover:bg-amber-400 transition-colors"
+          >
+            Edit Profile
+          </button>
+          <button 
+            onClick={() => {
+              setInitialSettingsSubView('main');
+              setCurrentView('settings');
+            }}
+            className="bg-gray-800 px-4 py-2 rounded-md font-semibold hover:bg-gray-700 transition-colors"
+          >
             <Settings size={20} />
           </button>
         </div>
@@ -482,12 +612,15 @@ export default function App() {
         <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-[#9298a6] mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Coins className="text-yellow-500" size={20} />
+              <TokCoin size={20} />
               <span className="font-bold">TokCoins</span>
             </div>
             <span className="text-yellow-500 font-bold">{user.coins.toLocaleString()}</span>
           </div>
-          <button className="w-full bg-yellow-500 text-black py-2 rounded-lg font-bold text-sm">
+          <button 
+            onClick={() => setIsTopUpModalOpen(true)}
+            className="w-full bg-yellow-500 text-black py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors"
+          >
             Buy More Coins
           </button>
         </div>
@@ -556,6 +689,28 @@ export default function App() {
 
   return (
     <div className="relative h-screen w-full bg-black overflow-hidden font-sans select-none">
+      {/* Pull to Refresh Indicator */}
+      <div 
+        className="fixed top-0 left-0 right-0 flex justify-center z-50 transition-all duration-200 pointer-events-none"
+        style={{
+          transform: `translateY(${isPulling ? Math.min(pullDistance - 40, 60) : -100}px)`,
+          opacity: isPulling ? Math.min(pullDistance / 80, 1) : 0
+        }}
+      >
+        <div className="bg-amber-500 text-black px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border border-white/20">
+          {isRefreshing ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
+              <span className="text-xs font-bold uppercase tracking-wider">Refreshing...</span>
+            </>
+          ) : (
+            <span className="text-xs font-bold uppercase tracking-wider">
+              {pullDistance > 80 ? 'Release to refresh' : 'Pull to refresh'}
+            </span>
+          )}
+        </div>
+      </div>
+
       <AnimatePresence>
         {showHeart.show && (
           <motion.div
@@ -742,7 +897,7 @@ export default function App() {
                 <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-[#9298a6]">
                   <p className="text-yellow-500 text-xs font-bold mb-1 uppercase tracking-wider">Balance</p>
                   <div className="flex items-center gap-2">
-                    <Coins className="text-yellow-500" size={24} />
+                    <TokCoin size={24} />
                     <span className="text-2xl font-bold text-white">{user.coins.toLocaleString()}</span>
                   </div>
                 </div>
@@ -802,33 +957,51 @@ export default function App() {
           <Megaphone 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'partners' ? 'text-amber-500' : ''}`} 
-            onClick={() => setCurrentView('partners')}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setCurrentView('partners');
+            }}
           />
           <Brain 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${isAIAssistantOpen ? 'text-amber-500' : ''}`} 
-            onClick={() => setIsAIAssistantOpen(true)}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setIsAIAssistantOpen(true);
+            }}
           />
           <MessageSquare 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'inbox' ? 'text-amber-500' : ''}`} 
-            onClick={() => setCurrentView('inbox')}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setCurrentView('inbox');
+            }}
           />
           <Settings 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'settings' ? 'text-amber-500' : ''}`} 
-            onClick={() => setCurrentView('settings')}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setCurrentView('settings');
+            }}
           />
           <Wallet 
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${isWalletOpen ? 'text-amber-500' : ''}`} 
-            onClick={() => setIsWalletOpen(true)}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setIsWalletOpen(true);
+            }}
           />
           <div 
             className={`w-8 h-8 rounded-full bg-gray-800 overflow-hidden border cursor-pointer transition-all ${
               currentView === 'profile' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-[#9298a6] hover:border-[#9298a6]'
             }`}
-            onClick={() => setCurrentView('profile')}
+            onClick={() => {
+              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+              setCurrentView('profile');
+            }}
           >
             <img src={user.avatar} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
@@ -844,7 +1017,7 @@ export default function App() {
             exit={{ opacity: 0, y: -50 }}
             className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg"
           >
-            <Coins size={20} />
+            <TokCoin size={20} />
             <span>+1 TokCoin earned!</span>
           </motion.div>
         )}
@@ -858,7 +1031,10 @@ export default function App() {
               activeTab={activeTab} 
               onTabChange={setActiveTab} 
               onLiveClick={() => setIsLiveOpen(true)}
-              onSearchClick={() => setCurrentView('discover')}
+              onSearchClick={() => {
+                if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
+                setCurrentView('discover');
+              }}
             />
             {renderHome()}
           </>
@@ -904,7 +1080,12 @@ export default function App() {
 
         {currentView === 'settings' && (
           <div className="h-full w-full overflow-y-auto pb-20 scrollbar-hide bg-black">
-            <SettingsView onClose={() => setCurrentView('home')} user={user} />
+            <SettingsView 
+              onClose={() => setCurrentView('home')} 
+              user={user} 
+              onTopUp={() => setIsTopUpModalOpen(true)}
+              initialSubView={initialSettingsSubView}
+            />
           </div>
         )}
         
@@ -917,10 +1098,133 @@ export default function App() {
             }} 
           />
         )}
+
+        {currentView === 'ad-center' && (
+          <AdCenterView 
+            user={user} 
+            videos={videos} 
+            initialVideoId={selectedAdVideoId}
+            onPromote={(videoId, packageId) => {
+              const pkg = [
+                { id: 'starter', cost: 50 },
+                { id: 'growth', cost: 200 },
+                { id: 'viral', cost: 750 }
+              ].find(p => p.id === packageId);
+              if (pkg) earnCoins(-pkg.cost, `Promotion: ${packageId}`);
+              setSelectedAdVideoId(null);
+            }} 
+          />
+        )}
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNav currentView={currentView} onViewChange={setCurrentView} />
+      {/* Mini Player */}
+      <AnimatePresence>
+        {miniPlayerVideo && currentView !== 'home' && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.8 }}
+            className="fixed bottom-24 right-4 z-[100] w-40 aspect-[9/16] bg-gray-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer group"
+            onClick={() => {
+              setCurrentView('home');
+              setMiniPlayerVideo(null);
+            }}
+          >
+            <video 
+              src={miniPlayerVideo.url} 
+              autoPlay 
+              loop 
+              muted={isMuted}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+              <Play size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setMiniPlayerVideo(null); }}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60"
+            >
+              <X size={14} />
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+              <p className="text-[10px] font-bold text-white truncate">@{miniPlayerVideo.author}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Shortcuts Help Modal */}
+      <AnimatePresence>
+        {showShortcutsHelp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            onClick={() => setShowShortcutsHelp(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-900 border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Keyboard Shortcuts</h2>
+                <button onClick={() => setShowShortcutsHelp(false)} className="text-gray-400 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {[
+                  { key: 'Space', desc: 'Play / Pause' },
+                  { key: 'M', desc: 'Mute / Unmute' },
+                  { key: '↑ / ↓', desc: 'Next / Prev Video' },
+                  { key: 'F', desc: 'Toggle Fullscreen' },
+                  { key: 'P', desc: 'Toggle PiP' },
+                  { key: '0-9', desc: 'Seek to 0-90%' },
+                  { key: '?', desc: 'Show this help' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <span className="text-gray-400 font-medium">{item.desc}</span>
+                    <kbd className="px-3 py-1 bg-white/10 border border-white/20 rounded-lg text-amber-500 font-bold min-w-[40px] text-center">
+                      {item.key}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+              
+              <button 
+                onClick={() => setShowShortcutsHelp(false)}
+                className="w-full mt-8 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-colors"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <TopUpModal 
+        isOpen={isTopUpModalOpen} 
+        onClose={() => setIsTopUpModalOpen(false)} 
+        onPurchase={(amount) => {
+          earnCoins(amount, 'Top Up Purchase');
+          setIsTopUpModalOpen(false);
+        }} 
+      />
+
+      <BottomNav 
+        currentView={currentView} 
+        onViewChange={(view) => {
+          if (currentView === 'home' && view !== 'home' && videos[activeVideoIndex]) {
+            setMiniPlayerVideo(videos[activeVideoIndex]);
+          }
+          setCurrentView(view);
+        }} 
+      />
 
       {/* AI Assistant Overlay */}
       <AnimatePresence>
@@ -1010,7 +1314,7 @@ export default function App() {
             exit={{ y: -50, opacity: 0 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 z-[110] shadow-lg"
           >
-            <Coins size={18} />
+            <TokCoin size={18} />
             <span>+5 TokCoins!</span>
             <CheckCircle size={16} />
           </motion.div>

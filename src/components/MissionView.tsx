@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Heart, Coins, Users, Shield, Zap, Globe, MessageCircle, Flame, Play } from 'lucide-react';
+import { TokCoin } from './TokCoin';
 
 interface MissionViewProps {
   onClose: () => void;
@@ -55,7 +56,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
 
             <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">
-                <Coins size={20} />
+                <TokCoin size={20} />
               </div>
               <h4 className="font-bold text-white">Direct Earnings</h4>
               <p className="text-xs text-gray-500">
