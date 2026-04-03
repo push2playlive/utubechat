@@ -2,6 +2,8 @@ export interface Video {
   id: string;
   url: string;
   author: string;
+  authorId: string;
+  authorPhoto: string;
   description: string;
   song: string;
   likes: number;
@@ -24,6 +26,7 @@ export interface User {
   following: number;
   likes: number;
   avatar: string;
+  walletAddress?: string;
   role?: 'admin' | 'user';
 }
 
@@ -34,4 +37,4 @@ export interface PartnerSite {
   logo?: string;
 }
 
-export type View = 'home' | 'discover' | 'create' | 'shop' | 'profile' | 'partners' | 'inbox' | 'settings' | 'mentors' | 'ad-center';
+export type View = 'home' | 'discover' | 'create' | 'shop' | 'profile' | 'partners' | 'inbox' | 'settings' | 'mentors' | 'ad-center' | 'admin';

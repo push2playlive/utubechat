@@ -1,7 +1,14 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_COMMAND_NEXUS_API_URL || 'https://internal-api.commandnexus.net/v1';
-const APP_ID = 'utubechat_shell_01';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  getDocs, 
+  increment,
+  serverTimestamp
+} from 'firebase/firestore';
 
 export interface CommandNexusUser {
   uid: string;
@@ -18,6 +25,7 @@ export interface CryptoAsset {
   color: string;
   icon: string;
   change24h: number;
+  walletAddress?: string;
 }
 
 export interface Mission {
@@ -29,132 +37,133 @@ export interface Mission {
   progress: number;
   total: number;
   completed: boolean;
+  userId: string;
 }
 
 class CommandNexusService {
-  private api = axios.create({
-    baseURL: API_URL,
-    timeout: 5000,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Nexus-App-ID': APP_ID,
-    },
-  });
-
-  private cacheKey = 'nexus_shadow_state';
-
-  constructor() {
-    // Interceptor for Graceful Degradation
-    this.api.interceptors.response.use(
-      (response) => {
-        // Update shadow cache on successful GET requests
-        if (response.config.method === 'get' && response.data) {
-          this.updateShadowCache(response.config.url!, response.data);
-        }
-        return response;
-      },
-      (error) => {
-        console.warn('Nexus connection issue:', error.message);
-        if (error.response?.status >= 500 && error.config?.method !== 'get') {
-          // Trigger custom event for UI to show "System Tuning"
-          window.dispatchEvent(new CustomEvent('nexus_tuning_mode'));
-        }
-        
-        // Try to return from shadow cache if it's a GET request
-        if (error.config?.method === 'get') {
-          const cachedData = this.getFromShadowCache(error.config.url!);
-          if (cachedData) {
-            console.log('Serving from Shadow Cache for:', error.config.url);
-            return { data: cachedData, status: 200, statusText: 'OK', headers: {}, config: error.config };
-          }
-        }
-        
-        return Promise.reject(new Error('System Tuning in Progress'));
-      }
-    );
-  }
-
-  private updateShadowCache(url: string, data: any) {
-    try {
-      const cache = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
-      cache[url] = {
-        data,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(this.cacheKey, JSON.stringify(cache));
-    } catch (e) {
-      console.error('Shadow Cache Error:', e);
-    }
-  }
-
-  private getFromShadowCache(url: string): any | null {
-    try {
-      const cache = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
-      return cache[url]?.data || null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  setAuthToken(token: string) {
-    this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
-
   async getUserData(uid: string): Promise<CommandNexusUser> {
     try {
-      const response = await this.api.get(`/users/${uid}`);
-      return response.data;
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        return {
+          uid: data.uid,
+          coins: data.coins || 0,
+          xp: data.xp || 0,
+          level: data.level || 1,
+          referrals: data.referrals || 0
+        };
+      }
+      throw new Error('User not found');
     } catch (error) {
-      throw new Error('System Tuning in Progress');
+      handleFirestoreError(error, OperationType.GET, `users/${uid}`);
+      throw error;
     }
   }
 
   async getCryptoAssets(uid: string): Promise<CryptoAsset[]> {
     try {
-      const response = await this.api.get(`/users/${uid}/assets`);
-      return response.data;
+      const assetsSnap = await getDocs(collection(db, 'users', uid, 'assets'));
+      if (assetsSnap.empty) {
+        // Initialize default assets if none exist
+        const defaults: CryptoAsset[] = [
+          { name: 'XRP', symbol: 'XRP', balance: '0.00', color: 'text-blue-400', icon: 'https://cryptologos.cc/logos/ripple-xrp-logo.png', change24h: 1.2, walletAddress: 'rPVMhWBmF9i3CNE9uS7LCNz4ecnYQH7iYF' },
+          { name: 'Bitcoin', symbol: 'BTC', balance: '0.00', color: 'text-orange-400', icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png', change24h: -0.5, walletAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' },
+          { name: 'Solana', symbol: 'SOL', balance: '0.00', color: 'text-purple-400', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png', change24h: 5.4, walletAddress: '7xKX99pZpY9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p' },
+          { name: 'Stellar', symbol: 'XLM', balance: '0.00', color: 'text-gray-400', icon: 'https://cryptologos.cc/logos/stellar-xlm-logo.png', change24h: 0.1, walletAddress: 'GA5ZSEJYB37JRC5AVCIAZ6Z3I3EX77M6S4S4S4S4S4S4S4S4S4S4S4S4' },
+        ];
+        
+        for (const asset of defaults) {
+          await setDoc(doc(db, 'users', uid, 'assets', asset.symbol), asset);
+        }
+        return defaults;
+      }
+      return assetsSnap.docs.map(doc => doc.data() as CryptoAsset);
     } catch (error) {
-      // Fallback to mock data if even shadow cache fails
-      return [
-        { name: 'XRP', symbol: 'XRP', balance: '0.00', color: 'text-blue-400', icon: 'https://cryptologos.cc/logos/ripple-xrp-logo.png', change24h: 0 },
-        { name: 'Bitcoin', symbol: 'BTC', balance: '0.00', color: 'text-orange-400', icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png', change24h: 0 },
-        { name: 'Solana', symbol: 'SOL', balance: '0.00', color: 'text-purple-400', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png', change24h: 0 },
-        { name: 'Stellar', symbol: 'XLM', balance: '0.00', color: 'text-gray-400', icon: 'https://cryptologos.cc/logos/stellar-xlm-logo.png', change24h: 0 },
-      ];
+      handleFirestoreError(error, OperationType.GET, `users/${uid}/assets`);
+      return [];
     }
   }
 
   async swapCoins(uid: string, amount: number, targetCrypto: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/users/${uid}/swap`, { amount, targetCrypto });
-      return response.data.success;
+      const userRef = doc(db, 'users', uid);
+      const assetRef = doc(db, 'users', uid, 'assets', targetCrypto);
+      
+      const userDoc = await getDoc(userRef);
+      if (!userDoc.exists() || (userDoc.data().coins || 0) < amount) {
+        return false;
+      }
+
+      // Simple mock rate: 100 coins = 1 unit of crypto (for demo)
+      const cryptoGain = amount / 100;
+
+      await updateDoc(userRef, {
+        coins: increment(-amount)
+      });
+
+      await updateDoc(assetRef, {
+        balance: increment(cryptoGain).toString()
+      });
+
+      return true;
     } catch (error) {
-      throw new Error('System Tuning in Progress');
+      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}/swap`);
+      return false;
     }
   }
 
   async getMissions(uid: string): Promise<Mission[]> {
     try {
-      const response = await this.api.get(`/users/${uid}/missions`);
-      return response.data;
+      const missionsSnap = await getDocs(collection(db, 'users', uid, 'missions'));
+      if (missionsSnap.empty) {
+        const defaults: Partial<Mission>[] = [
+          { title: 'Daily Login', description: 'Log in to the app today', reward: 10, type: 'daily', progress: 1, total: 1, completed: true },
+          { title: 'Watch 5 Videos', description: 'Watch 5 videos in the feed', reward: 25, type: 'daily', progress: 0, total: 5, completed: false },
+          { title: 'First Referral', description: 'Invite a friend to join', reward: 100, type: 'achievement', progress: 0, total: 1, completed: false },
+        ];
+
+        const missions: Mission[] = [];
+        for (const m of defaults) {
+          const missionRef = doc(collection(db, 'users', uid, 'missions'));
+          const missionData = { ...m, id: missionRef.id, userId: uid } as Mission;
+          await setDoc(missionRef, missionData);
+          missions.push(missionData);
+        }
+        return missions;
+      }
+      return missionsSnap.docs.map(doc => doc.data() as Mission);
     } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `users/${uid}/missions`);
       return [];
     }
   }
 
   async completeMission(uid: string, missionId: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/users/${uid}/missions/${missionId}/complete`);
-      return response.data.success;
+      const missionRef = doc(db, 'users', uid, 'missions', missionId);
+      const missionDoc = await getDoc(missionRef);
+      
+      if (missionDoc.exists() && !missionDoc.data().completed) {
+        const reward = missionDoc.data().reward;
+        await updateDoc(missionRef, { completed: true, progress: missionDoc.data().total });
+        await updateDoc(doc(db, 'users', uid), { coins: increment(reward) });
+        return true;
+      }
+      return false;
     } catch (error) {
-      throw new Error('System Tuning in Progress');
+      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}/missions/${missionId}`);
+      return false;
     }
   }
 
   async syncUser(uid: string, data: any): Promise<boolean> {
     try {
-      const response = await this.api.post(`/users/${uid}/sync`, data);
-      return response.data.success;
+      await updateDoc(doc(db, 'users', uid), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      return true;
     } catch (error) {
       return false;
     }
@@ -162,31 +171,32 @@ class CommandNexusService {
 
   async earnCoins(uid: string, amount: number, reason: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/users/${uid}/earn`, { amount, reason });
-      return response.data.success;
+      await updateDoc(doc(db, 'users', uid), {
+        coins: increment(amount)
+      });
+      // Log transaction could be added here
+      return true;
     } catch (error) {
       return false;
     }
   }
 
   async uploadFile(uid: string, file: File): Promise<string> {
-    console.warn('File upload to CommandNexus is not implemented. Returning local URL.');
+    // In a real app, this would use Firebase Storage
+    // For this environment, we use local URL as a placeholder but with a warning
+    console.warn('Firebase Storage not configured. Using local URL.');
     return URL.createObjectURL(file);
   }
 
   async getWalletAddress(uid: string, symbol: string): Promise<string> {
     try {
-      const response = await this.api.get(`/users/${uid}/wallet/${symbol}`);
-      return response.data.address;
+      const assetDoc = await getDoc(doc(db, 'users', uid, 'assets', symbol));
+      if (assetDoc.exists()) {
+        return assetDoc.data().walletAddress || 'Address not generated';
+      }
+      return 'Asset not found';
     } catch (error) {
-      // Fallback for demo/dev
-      const mockAddresses: Record<string, string> = {
-        'XRP': 'rPVMhWBmF9i3CNE9uS7LCNz4ecnYQH7iYF',
-        'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-        'SOL': '7xKX99pZpY9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p9p',
-        'XLM': 'GA5ZSEJYB37JRC5AVCIAZ6Z3I3EX77M6S4S4S4S4S4S4S4S4S4S4S4S4',
-      };
-      return mockAddresses[symbol] || 'Address not available';
+      return 'Error fetching address';
     }
   }
 }

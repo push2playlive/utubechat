@@ -59,6 +59,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
+  const [walletAddress, setWalletAddress] = useState(user.walletAddress || '');
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -87,6 +88,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
         email,
         phone,
         location,
+        walletAddress,
         updatedAt: serverTimestamp()
       });
       setShowSuccess(true);
@@ -242,6 +244,21 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
               className="bg-transparent text-white text-sm outline-none flex-1" 
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Wallet Address (BEP-20 / ERC-20)</label>
+          <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
+            <Zap size={18} className="text-yellow-500" />
+            <input 
+              type="text" 
+              value={walletAddress} 
+              onChange={(e) => setWalletAddress(e.target.value)}
+              placeholder="0x..."
+              className="bg-transparent text-white text-sm outline-none flex-1 font-mono" 
+            />
+          </div>
+          <p className="text-[10px] text-gray-600 ml-2 italic">Used for TokCoin withdrawals and rewards.</p>
         </div>
       </div>
 

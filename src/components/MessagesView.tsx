@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock, Pencil, Edit3, MessageSquare, Plus, MapPin, Copy, Forward } from 'lucide-react';
+import { db, auth, handleFirestoreError, OperationType, storage, ref, uploadBytes, getDownloadURL } from '../firebase';
 import { 
   collection, 
   query, 
@@ -16,7 +16,8 @@ import {
   getDocs,
   limit,
   setDoc,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 
 interface MessagesViewProps {
@@ -38,13 +39,26 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showPushNotification('Text copied to clipboard');
+  };
+
+  const handleForwardMessage = (msg: any) => {
+    // In a real app, this would open a user selector
+    showPushNotification('Forwarding is coming soon!');
+  };
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [chats, setChats] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,6 +131,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   };
 
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Fetch available users for new chat
   useEffect(() => {
@@ -124,25 +139,71 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     
     const fetchUsers = async () => {
       try {
-        const q = query(collection(db, 'public_profiles'), limit(10));
+        const usersRef = collection(db, 'public_profiles');
+        let q;
+        if (userSearchQuery.trim()) {
+          // Simple prefix search simulation
+          q = query(
+            usersRef, 
+            where('displayName', '>=', userSearchQuery),
+            where('displayName', '<=', userSearchQuery + '\uf8ff'),
+            limit(10)
+          );
+        } else {
+          q = query(usersRef, limit(10));
+        }
+        
         const snapshot = await getDocs(q);
         const users = snapshot.docs
           .map(doc => doc.data())
-          .filter(u => u.uid !== auth.currentUser?.uid);
+          .filter((u: any) => u.uid !== auth.currentUser?.uid);
         setAvailableUsers(users);
       } catch (error) {
         handleFirestoreError(error, OperationType.GET, 'public_profiles');
       }
     };
     fetchUsers();
-  }, [isNewChatOpen]);
+  }, [isNewChatOpen, userSearchQuery]);
 
-  const handleSendMessage = async (e?: React.FormEvent, content?: string, type: 'text' | 'gif' = 'text') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeChat || !auth.currentUser) return;
+
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `chats/${activeChat}/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      await handleSendMessage(undefined, '', 'image', downloadURL);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showPushNotification('Failed to upload image');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await deleteDoc(doc(db, 'chats', chatId));
+      if (activeChat === chatId) {
+        setActiveChat(null);
+      }
+      showPushNotification('Conversation deleted');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `chats/${chatId}`);
+    }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent, content?: string, type: 'text' | 'gif' | 'image' = 'text', imageUrl?: string) => {
     if (e) e.preventDefault();
+    console.log('Sending message...', { activeChat, currentUser: auth.currentUser?.uid, type });
     if (!auth.currentUser || !activeChat) return;
 
     const finalContent = content || messageText;
-    if (!finalContent.trim()) return;
+    if (!finalContent.trim() && type !== 'image') return;
 
     try {
       if (editingMessage) {
@@ -155,11 +216,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
         setEditingMessage(null);
       } else {
         const msgData = {
+          chatId: activeChat,
           text: finalContent,
           senderId: auth.currentUser.uid,
           senderName: auth.currentUser.displayName || 'User',
           createdAt: serverTimestamp(),
           type,
+          imageUrl: imageUrl || null,
           replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, senderName: replyingTo.senderName } : null,
           isRead: false
         };
@@ -169,7 +232,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
         // Update chat last message
         const chatRef = doc(db, 'chats', activeChat);
         await updateDoc(chatRef, {
-          lastMessage: type === 'gif' ? 'Sent a GIF' : finalContent,
+          lastMessage: type === 'gif' ? 'Sent a GIF' : type === 'image' ? 'Sent an image' : finalContent,
           lastMessageAt: serverTimestamp()
         });
       }
@@ -185,6 +248,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   const handleDeleteMessage = async (id: string) => {
     if (!activeChat) return;
+    console.log('Deleting message...', { id, activeChat });
     try {
       await deleteDoc(doc(db, 'chats', activeChat, 'messages', id));
     } catch (error) {
@@ -193,12 +257,32 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   };
 
   const handleEditMessage = (msg: any) => {
+    console.log('Editing message...', msg);
     setEditingMessage(msg);
     setMessageText(msg.text);
     setShowEmojiPicker(false);
     setShowGifPicker(false);
   };
 
+  const handleClearChat = async () => {
+    if (!activeChat) return;
+    if (!window.confirm('Are you sure you want to clear all messages in this chat?')) return;
+    
+    try {
+      const messagesRef = collection(db, 'chats', activeChat, 'messages');
+      const snapshot = await getDocs(messagesRef);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      setMessages([]);
+      setShowChatMenu(false);
+      showPushNotification('Chat cleared');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `chats/${activeChat}/messages`);
+    }
+  };
   const handleBlockUser = async () => {
     if (!auth.currentUser || !activeChat) return;
     const activeChatData = chats.find(c => c.id === activeChat);
@@ -332,7 +416,24 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
               </div>
 
               <div className="flex-1 overflow-y-auto scrollbar-hide">
-                {filteredChats.map((chat) => (
+                {filteredChats.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                      <MessageSquare size={40} className="text-gray-700" />
+                    </div>
+                    <h3 className="text-white font-bold text-lg mb-2">Your inbox is empty</h3>
+                    <p className="text-gray-500 text-sm mb-8 max-w-[240px]">
+                      Connect with other members and start chatting!
+                    </p>
+                    <button 
+                      onClick={() => setIsNewChatOpen(true)}
+                      className="bg-pink-500 text-white px-8 py-3 rounded-full font-bold shadow-lg shadow-pink-500/20 hover:scale-105 transition-transform"
+                    >
+                      Start a Conversation
+                    </button>
+                  </div>
+                ) : (
+                  filteredChats.map((chat) => (
                   <button 
                     key={chat.id}
                     onClick={() => handleOpenChat(chat.id)}
@@ -349,15 +450,30 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     <div className="flex-1 text-left">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-white font-bold text-sm">{chat.otherUserName}</span>
-                        <span className="text-gray-500 text-[10px]">
-                          {chat.lastMessageAt instanceof Timestamp ? chat.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-[10px]">
+                            {chat.lastMessageAt instanceof Timestamp ? chat.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                          </span>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Delete this conversation?')) {
+                                handleDeleteChat(chat.id);
+                              }
+                            }}
+                            className="p-1 text-gray-600 hover:text-red-500 transition-colors"
+                            title="Delete Chat"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                       <p className="text-gray-400 text-xs truncate">{chat.lastMessage}</p>
                     </div>
                   </button>
-                ))}
-              </div>
+                ))
+              )}
+            </div>
             </motion.div>
           ) : (
             /* Active Chat */
@@ -397,10 +513,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                         className="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-[#9298a6] rounded-xl shadow-2xl z-50 overflow-hidden"
                       >
                         <button 
-                          onClick={() => {
-                            setMessages([]);
-                            setShowChatMenu(false);
-                          }}
+                          onClick={handleClearChat}
                           className="w-full p-3 flex items-center gap-3 hover:bg-white/5 text-left text-sm text-white"
                         >
                           <Trash2 size={16} className="text-gray-400" />
@@ -420,7 +533,18 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-hide">
-                {messages.map((msg) => (
+                {messages.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                      <MessageSquare size={32} className="text-gray-600" />
+                    </div>
+                    <h3 className="text-white font-bold mb-2">No messages yet</h3>
+                    <p className="text-gray-500 text-xs max-w-[200px]">
+                      Send a message to start the conversation!
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
                   <div 
                     key={msg.id} 
                     className={`flex flex-col group ${msg.senderId === auth.currentUser?.uid ? 'items-end' : 'items-start'}`}
@@ -431,16 +555,54 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                       </div>
                     )}
                     <div className="flex items-center gap-2 max-w-[85%]">
+                      {/* Message Tools - Always visible on hover, but also add a small indicator */}
                       {msg.senderId === auth.currentUser?.uid && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
-                          <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
-                          <button onClick={() => handleEditMessage(msg)} className="text-gray-400 hover:text-blue-400 p-1 transition-colors" title="Edit"><MoreVertical size={14} /></button>
-                          <button onClick={() => handleDeleteMessage(msg.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors" title="Delete"><Trash2 size={14} /></button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 rounded-full px-2 py-1 shadow-xl border border-white/20 ml-2">
+                          <button 
+                            onClick={() => setReplyingTo(msg)} 
+                            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                            title="Reply"
+                          >
+                            <Reply size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleEditMessage(msg)} 
+                            className="p-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                            title="Edit Message"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleCopyText(msg.text)} 
+                            className="p-1.5 text-green-400 hover:text-green-300 transition-colors"
+                            title="Copy Text"
+                          >
+                            <Copy size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleForwardMessage(msg)} 
+                            className="p-1.5 text-purple-400 hover:text-purple-300 transition-colors"
+                            title="Forward"
+                          >
+                            <Forward size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteMessage(msg.id)} 
+                            className="p-1.5 text-red-500 hover:text-red-400 transition-colors"
+                            title="Delete Message"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       )}
                       <div className={`p-3 rounded-2xl text-sm ${msg.senderId === auth.currentUser?.uid ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                         {msg.type === 'gif' ? (
-                          <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" />
+                          <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" referrerPolicy="no-referrer" />
+                        ) : msg.type === 'image' ? (
+                          <div className="space-y-2">
+                            <img src={msg.imageUrl} alt="Uploaded" className="rounded-lg max-w-full cursor-pointer" onClick={() => window.open(msg.imageUrl, '_blank')} referrerPolicy="no-referrer" />
+                            {msg.text && <p>{msg.text}</p>}
+                          </div>
                         ) : (
                           <div className="flex flex-col">
                             <span>{msg.text}</span>
@@ -451,8 +613,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                         )}
                       </div>
                       {msg.senderId !== auth.currentUser?.uid && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full px-2 py-1">
-                          <button onClick={() => setReplyingTo(msg)} className="text-gray-400 hover:text-white p-1 transition-colors" title="Reply"><Reply size={14} /></button>
+                        <div className="flex items-center gap-2 transition-opacity bg-black/60 rounded-full px-3 py-1.5 shadow-lg border border-white/10">
+                          <button onClick={() => setReplyingTo(msg)} className="text-gray-300 hover:text-white p-1 transition-colors" title="Reply"><Reply size={18} /></button>
                         </div>
                       )}
                     </div>
@@ -467,8 +629,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                       )}
                     </div>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
+                ))
+              )}
+              <div ref={messagesEndRef} />
               </div>
 
               {/* Edit/Reply Indicator */}
@@ -497,6 +660,58 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
               )}
 
               <form onSubmit={handleSendMessage} className="p-4 bg-black/20 border-t border-[#9298a6] relative">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                  accept="image/*" 
+                />
+                {/* Plus Menu */}
+                <AnimatePresence>
+                  {showPlusMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-4 mb-2 p-2 bg-gray-800 rounded-2xl border border-[#9298a6] flex flex-col gap-1 z-50 min-w-[160px] shadow-2xl"
+                    >
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setShowPlusMenu(false);
+                        }}
+                        className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-white text-sm transition-colors"
+                      >
+                        <ImageIcon size={20} className="text-blue-400" />
+                        <span>Photo & Video</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setShowGifPicker(true);
+                          setShowPlusMenu(false);
+                        }}
+                        className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-white text-sm transition-colors"
+                      >
+                        <Gift size={20} className="text-purple-400" />
+                        <span>GIF</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          showPushNotification('Location sharing coming soon!');
+                          setShowPlusMenu(false);
+                        }}
+                        className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-white text-sm transition-colors"
+                      >
+                        <MapPin size={20} className="text-red-400" />
+                        <span>Location</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {/* Emoji Picker */}
                 <AnimatePresence>
                   {showEmojiPicker && (
@@ -543,14 +758,35 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   )}
                 </AnimatePresence>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button 
-                    type="button" 
-                    onClick={() => setShowGifPicker(!showGifPicker)}
-                    className={`text-gray-400 hover:text-white ${showGifPicker ? 'text-pink-500' : ''}`}
+                    type="button"
+                    onClick={() => setShowPlusMenu(!showPlusMenu)}
+                    className={`p-2 text-gray-400 hover:text-white transition-all ${showPlusMenu ? 'rotate-45 text-white' : ''}`}
+                    title="More options"
                   >
-                    <Gift size={20} />
+                    <Plus size={24} />
                   </button>
+                  
+                  {/* Direct Image Upload Button for visibility */}
+                  <button 
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                    title="Upload Image"
+                  >
+                    <Camera size={24} />
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`p-2 text-gray-400 hover:text-white transition-colors ${showEmojiPicker ? 'text-amber-500' : ''}`}
+                    title="Emoji"
+                  >
+                    <Smile size={24} />
+                  </button>
+
                   <div className="flex-1 bg-white/5 rounded-full px-4 py-2 flex items-center gap-2 border border-[#9298a6]">
                     <input 
                       type="text" 
@@ -559,20 +795,24 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                       placeholder="Send a message..." 
                       className="flex-1 bg-transparent text-white text-sm outline-none" 
                     />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className={`text-gray-400 hover:text-white ${showEmojiPicker ? 'text-pink-500' : ''}`}
-                    >
-                      <Smile size={20} />
-                    </button>
                   </div>
-                  <button 
-                    type="submit"
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${messageText.trim() ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-600'}`}
-                  >
-                    <Send size={18} />
-                  </button>
+
+                  {messageText.trim() ? (
+                    <button 
+                      type="submit"
+                      className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform shadow-lg"
+                    >
+                      <Send size={20} />
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                    >
+                      <Camera size={20} />
+                    </button>
+                  )}
                 </div>
               </form>
             </motion.div>
@@ -598,7 +838,19 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   <h3 className="text-white font-bold">New Message</h3>
                   <button onClick={() => setIsNewChatOpen(false)} className="text-gray-500"><X size={20} /></button>
                 </div>
-                  <div className="p-4 space-y-2">
+                <div className="p-4 border-b border-[#9298a6]">
+                  <div className="bg-white/5 rounded-xl px-4 py-2 flex items-center gap-3 border border-[#9298a6]">
+                    <Search size={16} className="text-gray-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search users..." 
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="bg-transparent text-white text-sm outline-none flex-1" 
+                    />
+                  </div>
+                </div>
+                  <div className="p-4 space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide">
                     {availableUsers.length > 0 ? (
                       availableUsers.map(user => (
                         <button 

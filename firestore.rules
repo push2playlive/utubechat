@@ -125,11 +125,12 @@ service cloud.firestore {
     }
 
     function isValidMessage(data) {
-      return hasOnlyAllowedFields(['chatId', 'senderId', 'senderName', 'text', 'type', 'createdAt', 'replyTo', 'isEdited', 'isRead', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['chatId', 'senderId', 'senderName', 'text', 'type', 'imageUrl', 'createdAt', 'replyTo', 'isEdited', 'isRead', 'updatedAt']) &&
              data.chatId is string && data.chatId.size() < 128 &&
              data.senderId is string && data.senderId.size() < 128 &&
-             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.text is string && data.text.size() < 5000 &&
              data.type in ['text', 'gif', 'image'] &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() < 2048 && isValidUrl(data.imageUrl))) &&
              (!('senderName' in data) || (data.senderName is string && data.senderName.size() < 100)) &&
              (!('replyTo' in data) || data.replyTo is map) &&
              (!('isEdited' in data) || data.isEdited is bool) &&
@@ -144,9 +145,78 @@ service cloud.firestore {
              (!('blockedAt' in data) || data.blockedAt is timestamp);
     }
 
+    function isValidVideo(data) {
+      return hasOnlyAllowedFields(['author', 'authorId', 'authorPhoto', 'description', 'url', 'song', 'likes', 'comments', 'shares', 'isLiked', 'isFollowed', 'effect', 'customEffectUrl', 'captions', 'createdAt']) &&
+             data.authorId is string && data.authorId.size() < 128 &&
+             data.url is string && isValidUrl(data.url) &&
+             data.description is string && data.description.size() < 5000 &&
+             (!('author' in data) || (data.author is string && data.author.size() < 100)) &&
+             (!('authorPhoto' in data) || (data.authorPhoto is string && data.authorPhoto.size() < 2048 && isValidUrl(data.authorPhoto))) &&
+             (!('song' in data) || (data.song is string && data.song.size() < 200)) &&
+             (!('likes' in data) || data.likes is number) &&
+             (!('comments' in data) || data.comments is number) &&
+             (!('shares' in data) || data.shares is number) &&
+             (!('effect' in data) || (data.effect is string && data.effect.size() < 50)) &&
+             (!('customEffectUrl' in data) || (data.customEffectUrl is string && data.customEffectUrl.size() < 2048 && isValidUrl(data.customEffectUrl))) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidLike(data) {
+      return hasOnlyAllowedFields(['userId', 'videoId', 'createdAt']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.videoId is string &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidFollow(data) {
+      return hasOnlyAllowedFields(['followerId', 'followingId', 'createdAt']) &&
+             data.followerId is string && data.followerId == request.auth.uid &&
+             data.followingId is string &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /videos/{videoId} {
+      allow read: if true; // Videos are public
+      
+      allow create: if isAuthenticated() && 
+                      isValidVideo(request.resource.data) && 
+                      request.resource.data.authorId == request.auth.uid;
+                      
+      allow update: if isAuthenticated() && 
+                      isValidVideo(request.resource.data) && 
+                      (
+                        (resource.data.authorId == request.auth.uid && 
+                         request.resource.data.authorId == resource.data.authorId &&
+                         request.resource.data.url == resource.data.url) ||
+                        // Allow anyone to update likes/comments/shares count if they are just incrementing
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'comments', 'shares'])) ||
+                        isAdmin()
+                      );
+                      
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /likes/{likeId} {
+      // likeId is userId_videoId
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                      isValidLike(request.resource.data) && 
+                      likeId == request.auth.uid + "_" + request.resource.data.videoId;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /follows/{followId} {
+      // followId is followerId_followingId
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                      isValidFollow(request.resource.data) && 
+                      followId == request.auth.uid + "_" + request.resource.data.followingId;
+      allow delete: if isAuthenticated() && (resource.data.followerId == request.auth.uid || isAdmin());
+    }
 
     match /users/{userId} {
       // PII Protection: Only owner or admin can read full profile

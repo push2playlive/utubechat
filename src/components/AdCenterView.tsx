@@ -4,6 +4,8 @@ import { Megaphone, TrendingUp, Users, Eye, DollarSign, Plus, ChevronRight, BarC
 import { User, Video } from '../types';
 import { TokCoin } from './TokCoin';
 import { TopUpModal } from './TopUpModal';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 
 interface AdCenterViewProps {
   user: User;
@@ -49,11 +51,28 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [isPromoting, setIsPromoting] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [targeting, setTargeting] = useState({
     interests: [] as string[],
     ageRange: '18-35',
     gender: 'all'
   });
+
+  // Sync Campaigns
+  React.useEffect(() => {
+    if (!user.id) return;
+    const q = query(
+      collection(db, 'campaigns'),
+      where('userId', '==', user.id),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCampaigns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'campaigns');
+    });
+    return () => unsubscribe();
+  }, [user.id]);
 
   const handlePromote = () => {
     if (!selectedVideo || !selectedPackage) return;
@@ -354,56 +373,73 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
               </div>
 
               <div className="space-y-4">
-                {[
-                  { id: '1', name: 'Viral Surge', status: 'Active', progress: 65, views: 6542, target: 10000, video: videos[0] },
-                  { id: '2', name: 'Growth Engine', status: 'Active', progress: 22, views: 550, target: 2500, video: videos[1] }
-                ].map((campaign) => (
-                  <div key={campaign.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row gap-6">
-                    <div className="w-24 aspect-[9/16] rounded-xl overflow-hidden relative flex-shrink-0">
-                      <video src={campaign.video.url} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/20" />
-                    </div>
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-white font-black text-lg">{campaign.name}</h4>
-                          <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            {campaign.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-gray-400 text-xs mb-4">
-                          <div className="flex items-center gap-1">
-                            <Eye size={12} /> {campaign.views.toLocaleString()} / {campaign.target.toLocaleString()} Views
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <TrendingUp size={12} /> {campaign.progress}% Complete
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${campaign.progress}%` }}
-                            className="h-full bg-gradient-to-r from-amber-500 to-orange-600"
-                          />
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                          <span>Started 2 days ago</span>
-                          <span>Ends in 5 days</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 justify-center">
-                      <button className="px-6 py-2 bg-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/20 transition-colors">
-                        Pause
-                      </button>
-                      <button className="px-6 py-2 bg-amber-500/10 text-amber-500 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-colors">
-                        View Details
-                      </button>
-                    </div>
+                {campaigns.length === 0 ? (
+                  <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
+                    <Target className="text-gray-700 mx-auto mb-4" size={48} />
+                    <p className="text-gray-500 font-bold">No active campaigns yet</p>
+                    <button 
+                      onClick={() => setActiveTab('promote')}
+                      className="mt-4 text-amber-500 text-sm font-bold hover:underline"
+                    >
+                      Start your first campaign
+                    </button>
                   </div>
-                ))}
+                ) : (
+                  campaigns.map((campaign) => {
+                    const video = videos.find(v => v.id === campaign.videoId) || videos[0];
+                    const progress = Math.min(100, Math.round((campaign.currentViews / campaign.targetViews) * 100));
+                    
+                    return (
+                      <div key={campaign.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row gap-6">
+                        <div className="w-24 aspect-[9/16] rounded-xl overflow-hidden relative flex-shrink-0">
+                          <video src={video.url} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/20" />
+                        </div>
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-white font-black text-lg">{campaign.packageId.charAt(0).toUpperCase() + campaign.packageId.slice(1)} Boost</h4>
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                campaign.status === 'active' ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-500'
+                              }`}>
+                                {campaign.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-gray-400 text-xs mb-4">
+                              <div className="flex items-center gap-1">
+                                <Eye size={12} /> {campaign.currentViews.toLocaleString()} / {campaign.targetViews.toLocaleString()} Views
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp size={12} /> {progress}% Complete
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-600"
+                              />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                              <span>Started {campaign.createdAt instanceof Timestamp ? campaign.createdAt.toDate().toLocaleDateString() : 'Just now'}</span>
+                              <span>{campaign.status === 'active' ? 'Running' : 'Paused'}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 justify-center">
+                          <button className="px-6 py-2 bg-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/20 transition-colors">
+                            {campaign.status === 'active' ? 'Pause' : 'Resume'}
+                          </button>
+                          <button className="px-6 py-2 bg-amber-500/10 text-amber-500 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-colors">
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {/* Empty State for no campaigns could go here */}

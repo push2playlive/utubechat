@@ -35,6 +35,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
   const [showEffects, setShowEffects] = useState(false);
   const [isUploadingEffect, setIsUploadingEffect] = useState(false);
   const [activeFilter, setActiveFilter] = useState('none');
+  const [selectedCategory, setSelectedCategory] = useState('Color');
   const [audioTrack, setAudioTrack] = useState<{ url: string; name: string; duration: number } | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [timelineZoom, setTimelineZoom] = useState(1);
@@ -396,8 +397,26 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                   <X size={20} />
                 </button>
               </div>
+              
+              <div className="flex gap-4 border-b border-white/10">
+                {['Color', 'Distortion', 'Light', 'Basic'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`pb-2 text-xs font-bold transition-colors relative ${
+                      selectedCategory === cat ? 'text-amber-500' : 'text-gray-500 hover:text-white'
+                    }`}
+                  >
+                    {cat}
+                    {selectedCategory === cat && (
+                      <motion.div layoutId="cat-tab" className="absolute bottom-0 inset-x-0 h-0.5 bg-amber-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                {PREDEFINED_EFFECTS.map(effect => (
+                {PREDEFINED_EFFECTS.filter(e => e.category === selectedCategory || (selectedCategory === 'Basic' && !e.category)).map(effect => (
                   <button
                     key={effect.id}
                     onClick={() => {
@@ -412,7 +431,7 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                     }`}
                   >
                     <div 
-                      className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-black flex items-center justify-center ${
+                      className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-black flex items-center justify-center relative ${
                         (step === 'capture' ? activeFilter === effect.id : clips[activeClipIndex]?.effect === effect.id) ? 'border-amber-500' : 'border-gray-800'
                       }`}
                     >
@@ -420,11 +439,14 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                         className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50"
                         style={{ filter: effect.filter }}
                       />
+                      {effect.overlay && (
+                        <img src={effect.overlay} className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen" alt="" />
+                      )}
                     </div>
                     <span className="text-[10px] font-bold">{effect.name}</span>
                   </button>
                 ))}
-                {step === 'edit' && (
+                {step === 'edit' && selectedCategory === 'Basic' && (
                   <label className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group relative">
                     <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center bg-gray-800 transition-all ${
                       clips[activeClipIndex]?.effect === 'custom' ? 'border-amber-500 text-amber-500' : 'border-[#9298a6] text-gray-500 group-hover:border-white group-hover:text-white'
@@ -469,6 +491,17 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
               className="h-full w-full object-cover transition-all duration-300"
               style={{ filter: PREDEFINED_EFFECTS.find(e => e.id === activeFilter)?.filter || 'none' }}
             />
+
+            {PREDEFINED_EFFECTS.find(e => e.id === activeFilter)?.overlay && (
+              <div className="absolute inset-0 pointer-events-none">
+                <img 
+                  src={PREDEFINED_EFFECTS.find(e => e.id === activeFilter)?.overlay} 
+                  className="w-full h-full object-cover opacity-40 mix-blend-screen"
+                  alt="Effect Overlay"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            )}
             
             {/* Camera Controls Overlay */}
             <div className="absolute right-4 top-24 flex flex-col gap-6">
@@ -571,6 +604,17 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                   playsInline
                   onClick={() => setIsPlaying(!isPlaying)}
                 />
+              )}
+
+              {PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.overlay && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <img 
+                    src={PREDEFINED_EFFECTS.find(e => e.id === clips[activeClipIndex].effect)?.overlay} 
+                    className="w-full h-full object-cover opacity-40 mix-blend-screen"
+                    alt="Effect Overlay"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
               )}
               
               {audioTrack && (
@@ -800,6 +844,23 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                   >
                     <Trash2 size={16} />
                     <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
+                  </button>
+                  <div className="w-px h-4 bg-white/10 mx-2" />
+                  <button 
+                    onClick={() => handleMoveClip(activeClipIndex, 'left')}
+                    disabled={activeClipIndex === 0}
+                    className={`flex items-center gap-1.5 transition-colors ${activeClipIndex === 0 ? 'text-gray-700' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    <ChevronRight size={16} className="rotate-180" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Move Left</span>
+                  </button>
+                  <button 
+                    onClick={() => handleMoveClip(activeClipIndex, 'right')}
+                    disabled={activeClipIndex === clips.length - 1}
+                    className={`flex items-center gap-1.5 transition-colors ${activeClipIndex === clips.length - 1 ? 'text-gray-700' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Move Right</span>
+                    <ChevronRight size={16} />
                   </button>
                 </div>
 

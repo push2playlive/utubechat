@@ -15,9 +15,12 @@ interface VideoCardProps {
   onNext?: () => void;
   onLike?: (isLiked: boolean) => void;
   onCommentClick?: () => void;
-  onMessageClick?: (author: string) => void;
+  onMessageClick?: (author: { uid: string, displayName: string, photoURL: string }) => void;
   onMiniPlayer?: (video: Video) => void;
   onPromoteClick?: (videoId: string) => void;
+  onFollow?: (authorId: string, isFollowed: boolean) => void;
+  isAutoScrollEnabled: boolean;
+  setIsAutoScrollEnabled: (enabled: boolean) => void;
   loop?: boolean;
 }
 
@@ -33,6 +36,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   onMessageClick,
   onMiniPlayer,
   onPromoteClick,
+  onFollow,
+  isAutoScrollEnabled,
+  setIsAutoScrollEnabled,
   loop = true
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,10 +54,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const [showCaptions, setShowCaptions] = useState(true);
   const [currentCaption, setCurrentCaption] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(false);
   const [isFollowed, setIsFollowed] = useState(video.isFollowed);
   const [likes, setLikes] = useState(video.likes);
   const [isLiked, setIsLiked] = useState(video.isLiked);
+
+  useEffect(() => {
+    setLikes(video.likes);
+    setIsLiked(video.isLiked);
+    setIsFollowed(video.isFollowed);
+  }, [video.likes, video.isLiked, video.isFollowed]);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -153,14 +164,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const toggleLike = () => {
+    onLike?.(isLiked);
     const newLiked = !isLiked;
     setIsLiked(newLiked);
     setLikes(prev => isLiked ? prev - 1 : prev + 1);
-    if (newLiked) onLike?.(false);
   };
 
   const toggleFollow = (e: React.MouseEvent) => {
     e.stopPropagation();
+    onFollow?.(video.authorId, isFollowed);
     setIsFollowed(!isFollowed);
   };
 
@@ -326,6 +338,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       {/* Right Sidebar Actions */}
       {!isFullscreen && (
         <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4 z-30">
+          {/* Minimize Button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onMiniPlayer?.(video);
+            }}
+            className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 border border-white/10 mb-1"
+            title="Minimize to Mini Player"
+          >
+            <Minimize2 size={22} />
+          </button>
+
           {/* Profile */}
           <div className="relative mb-2 group">
             <div className="w-12 h-12 rounded-full border-2 border-white/40 overflow-hidden bg-gray-800 shadow-xl transition-transform group-hover:scale-105">
@@ -415,12 +439,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                         <span className="text-sm font-semibold">Auto Scroll</span>
                       </div>
                       <div className={`w-8 h-4 rounded-full relative transition-colors ${isAutoScrollEnabled ? 'bg-amber-500' : 'bg-gray-700'}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoScrollEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoScrollEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                       </div>
                     </button>
 
                     <button 
-                      onClick={(e) => { e.stopPropagation(); onMessageClick?.(video.author); setShowMoreMenu(false); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onMessageClick?.({ 
+                          uid: video.authorId, 
+                          displayName: video.author, 
+                          photoURL: video.authorPhoto 
+                        }); 
+                        setShowMoreMenu(false); 
+                      }}
                       className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
                     >
                       <Mail size={18} />

@@ -78,12 +78,127 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the block was created." }
       },
       "required": ["blockerId", "blockedId", "createdAt"]
+    },
+    "CryptoAsset": {
+      "title": "Crypto Asset",
+      "description": "A cryptocurrency asset owned by a user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "balance": { "type": "string" },
+        "color": { "type": "string" },
+        "icon": { "type": "string", "format": "url" },
+        "change24h": { "type": "number" },
+        "walletAddress": { "type": "string" }
+      },
+      "required": ["name", "symbol", "balance"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "description": "A task or achievement for a user to complete.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "reward": { "type": "integer" },
+        "type": { "type": "string", "enum": ["daily", "weekly", "achievement"] },
+        "progress": { "type": "integer" },
+        "total": { "type": "integer" },
+        "completed": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "reward", "type", "userId"]
+    },
+    "Campaign": {
+      "title": "Ad Campaign",
+      "description": "A video promotion campaign.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "packageId": { "type": "string" },
+        "targetViews": { "type": "integer" },
+        "currentViews": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "paused", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "videoId", "packageId", "targetViews", "status"]
+    },
+    "Video": {
+      "title": "Video",
+      "description": "A video post uploaded by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string", "format": "url" },
+        "author": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorPhoto": { "type": "string", "format": "url" },
+        "description": { "type": "string" },
+        "song": { "type": "string" },
+        "likes": { "type": "integer" },
+        "comments": { "type": "integer" },
+        "shares": { "type": "integer" },
+        "effect": { "type": "string" },
+        "customEffectUrl": { "type": "string", "format": "url" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "author", "authorId", "description"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like on a video by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "videoId"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "A follow relationship between two users.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "followingId"]
     }
   },
   "firestore": {
+    "/videos/{videoId}": {
+      "schema": "Video",
+      "description": "Global video posts."
+    },
+    "/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Video likes tracking."
+    },
+    "/follows/{followId}": {
+      "schema": "Follow",
+      "description": "User follow relationships."
+    },
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profile documents."
+    },
+    "/users/{userId}/assets/{assetSymbol}": {
+      "schema": "CryptoAsset",
+      "description": "User's cryptocurrency assets."
+    },
+    "/users/{userId}/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "User's missions and progress."
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Global ad campaigns."
     },
     "/chats/{chatId}": {
       "schema": "Chat",

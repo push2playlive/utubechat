@@ -19,14 +19,15 @@ import { AIAssistant } from './components/AIAssistant';
 import { Comments } from './components/Comments';
 import { DiscoverView } from './components/DiscoverView';
 import { AdCenterView } from './components/AdCenterView';
+import { AdminView } from './components/AdminView';
 import { TokCoin } from './components/TokCoin';
 import { TopUpModal } from './components/TopUpModal';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap } from 'lucide-react';
+import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield } from 'lucide-react';
 import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc, collection, addDoc, query, orderBy, increment, deleteDoc, where } from 'firebase/firestore';
 
 import { commandNexusService } from './services/commandNexusService';
 
@@ -47,11 +48,13 @@ export default function App() {
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isTuningMode, setIsTuningMode] = useState(false);
-  const [initialMessageUser, setInitialMessageUser] = useState<string | undefined>(undefined);
+  const [initialMessageUser, setInitialMessageUser] = useState<any>(null);
   const [user, setUser] = useState<User>(CURRENT_USER);
   const [miniPlayerVideo, setMiniPlayerVideo] = useState<Video | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [selectedAdVideoId, setSelectedAdVideoId] = useState<string | null>(null);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
@@ -155,7 +158,8 @@ export default function App() {
             coins: data.coins || 0,
             followers: data.followers || 0,
             following: data.following || 0,
-            likes: data.likes || 0
+            likes: data.likes || 0,
+            role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
           });
         }
       }, (error) => {
@@ -313,28 +317,123 @@ export default function App() {
     }
   };
 
-  const handleVideoUpload = (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => {
-    const newVideo: Video = {
-      id: Date.now().toString(),
-      url: videoData.url,
-      author: user.username,
-      description: videoData.description,
-      song: 'Original Sound - ' + user.name,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isLiked: false,
-      isFollowed: false,
-      effect: videoData.effect,
-      customEffectUrl: videoData.customEffectUrl,
-    };
+  const [userLikes, setUserLikes] = useState<string[]>([]);
+  const [userFollows, setUserFollows] = useState<string[]>([]);
+
+  // Sync User Likes
+  useEffect(() => {
+    if (!firebaseUser) {
+      setUserLikes([]);
+      return;
+    }
+
+    const likesRef = collection(db, 'likes');
+    const q = query(likesRef, where('userId', '==', firebaseUser.uid));
     
-    setVideos([newVideo, ...videos]);
-    setCurrentView('home');
-    setActiveVideoIndex(0);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const likedVideoIds = snapshot.docs.map(doc => doc.data().videoId);
+      setUserLikes(likedVideoIds);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
+
+  // Sync User Follows
+  useEffect(() => {
+    if (!firebaseUser) {
+      setUserFollows([]);
+      return;
+    }
+
+    const followsRef = collection(db, 'follows');
+    const q = query(followsRef, where('followerId', '==', firebaseUser.uid));
     
-    // Reward for uploading
-    earnCoins(50, 'upload_bonus');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const followingIds = snapshot.docs.map(doc => doc.data().followingId);
+      setUserFollows(followingIds);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
+
+  // Sync Videos from Firestore
+  useEffect(() => {
+    const videosRef = collection(db, 'videos');
+    const q = query(videosRef, orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedVideos = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          isLiked: userLikes.includes(doc.id),
+          isFollowed: userFollows.includes(data.authorId)
+        };
+      }) as Video[];
+      
+      if (fetchedVideos.length > 0) {
+        setVideos(fetchedVideos);
+      } else {
+        // Fallback to mock if no videos in DB
+        setVideos(MOCK_VIDEOS.map(v => ({ 
+          ...v, 
+          isLiked: userLikes.includes(v.id),
+          isFollowed: userFollows.includes(v.authorId)
+        })));
+      }
+    }, (error) => {
+      console.error("Error fetching videos:", error);
+      setVideos(MOCK_VIDEOS);
+    });
+
+    return () => unsubscribe();
+  }, [userLikes, userFollows]);
+
+  const isOverlayOpen = isMessagesOpen || isAIAssistantOpen || isWalletOpen || isAffiliateOpen || isMakeupRoomOpen || isLiveOpen || isMissionOpen || isMonetizationOpen;
+
+  // Clear mini player when navigating to hidden views or opening overlays
+  useEffect(() => {
+    const hiddenViews = ['home', 'inbox', 'create', 'discover', 'ad-center', 'settings', 'mentors', 'partners', 'shop', 'profile', 'admin'];
+    if (hiddenViews.includes(currentView) || isOverlayOpen) {
+      setMiniPlayerVideo(null);
+    }
+  }, [currentView, isOverlayOpen]);
+
+  const handleVideoUpload = async (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => {
+    if (!firebaseUser) return;
+
+    setIsRefreshing(true);
+    try {
+      const newVideo = {
+        author: user.username || user.displayName,
+        authorId: firebaseUser.uid,
+        authorPhoto: user.photoURL,
+        description: videoData.description,
+        url: videoData.url,
+        song: 'Original Sound - ' + user.displayName,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        isLiked: false,
+        isFollowed: false,
+        effect: videoData.effect,
+        customEffectUrl: videoData.customEffectUrl,
+        createdAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, 'videos'), newVideo);
+      
+      // Reward for uploading
+      await commandNexusService.earnCoins(firebaseUser.uid, 50, 'Video Upload Reward');
+      
+      setCurrentView('home');
+      setActiveVideoIndex(0);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'videos');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const earnCoins = async (amount: number, reason: string = 'bonus') => {
@@ -387,20 +486,85 @@ export default function App() {
     }
   };
 
-  const handleLike = (videoId: string, isLiked: boolean) => {
-    if (!isLiked) {
-      earnCoins(5);
+  const handleLike = async (videoId: string, isLiked: boolean) => {
+    if (!firebaseUser) return;
+
+    try {
+      const videoRef = doc(db, 'videos', videoId);
+      const likeRef = doc(db, 'likes', `${firebaseUser.uid}_${videoId}`);
+      
+      if (!isLiked) {
+        // Like the video
+        await setDoc(likeRef, {
+          userId: firebaseUser.uid,
+          videoId: videoId,
+          createdAt: serverTimestamp()
+        });
+        
+        await updateDoc(videoRef, {
+          likes: increment(1)
+        });
+        
+        earnCoins(5, 'Video Like Reward');
+      } else {
+        // Unlike the video
+        await deleteDoc(likeRef);
+        
+        await updateDoc(videoRef, {
+          likes: increment(-1)
+        });
+      }
+    } catch (error) {
+      console.error("Error handling like:", error);
     }
   };
 
-  const handleMessageClick = (author: string) => {
+  const handleMessageClick = (author: any) => {
     setInitialMessageUser(author);
     setIsMessagesOpen(true);
-    if (videos[activeVideoIndex]) {
-      setMiniPlayerVideo(videos[activeVideoIndex]);
-    }
   };
 
+  const handleFollow = async (authorId: string, isFollowed: boolean) => {
+    if (!firebaseUser || authorId === firebaseUser.uid) return;
+
+    try {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const authorRef = doc(db, 'users', authorId);
+      const followRef = doc(db, 'follows', `${firebaseUser.uid}_${authorId}`);
+      
+      if (!isFollowed) {
+        // Follow
+        await setDoc(followRef, {
+          followerId: firebaseUser.uid,
+          followingId: authorId,
+          createdAt: serverTimestamp()
+        });
+        
+        await updateDoc(userRef, {
+          following: increment(1)
+        });
+        
+        await updateDoc(authorRef, {
+          followers: increment(1)
+        });
+        
+        earnCoins(10, 'New Follow Reward');
+      } else {
+        // Unfollow
+        await deleteDoc(followRef);
+        
+        await updateDoc(userRef, {
+          following: increment(-1)
+        });
+        
+        await updateDoc(authorRef, {
+          followers: increment(-1)
+        });
+      }
+    } catch (error) {
+      console.error("Error handling follow:", error);
+    }
+  };
   const handleLogout = async () => {
     try {
       await logout();
@@ -510,17 +674,19 @@ export default function App() {
             isActive={index === activeVideoIndex && currentView === 'home'} 
             isMuted={isMuted}
             setIsMuted={setIsMuted}
+            isAutoScrollEnabled={isAutoScrollEnabled}
+            setIsAutoScrollEnabled={setIsAutoScrollEnabled}
             onPrev={() => index > 0 && scrollToVideo(index - 1)}
             onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
             onLike={(isLiked) => handleLike(video.id, isLiked)}
             onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
             onMessageClick={handleMessageClick}
-            onMiniPlayer={(v) => setMiniPlayerVideo(v)}
             onPromoteClick={(videoId) => {
               setSelectedAdVideoId(videoId);
               setCurrentView('ad-center');
             }}
-            loop={true}
+            onFollow={(authorId, isFollowed) => handleFollow(authorId, isFollowed)}
+            loop={!isAutoScrollEnabled}
           />
         ))}
       </div>
@@ -603,10 +769,20 @@ export default function App() {
               setInitialSettingsSubView('main');
               setCurrentView('settings');
             }}
-            className="bg-gray-800 px-4 py-2 rounded-md font-semibold hover:bg-gray-700 transition-colors"
+            className="bg-gray-800 px-4 py-2 rounded-md font-semibold hover:bg-gray-700 transition-colors flex items-center gap-2"
           >
             <Settings size={20} />
+            <span className="text-xs">Settings</span>
           </button>
+          {user.role === 'admin' && (
+            <button 
+              onClick={() => setIsAdminOpen(true)}
+              className="bg-amber-500/20 text-amber-500 px-4 py-2 rounded-md font-semibold hover:bg-amber-500/30 transition-colors border border-amber-500/30"
+              title="Admin Panel"
+            >
+              <Shield size={20} />
+            </button>
+          )}
         </div>
 
         <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-[#9298a6] mb-8">
@@ -650,7 +826,13 @@ export default function App() {
     <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">TokShop</h1>
-        <ShoppingBag className="text-white" />
+        <button 
+          onClick={() => setIsWalletOpen(true)}
+          className="flex items-center gap-2 bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full text-xs font-bold border border-blue-500/30"
+        >
+          <Wallet size={14} />
+          My Wallet
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -686,6 +868,7 @@ export default function App() {
       </div>
     </div>
   );
+
 
   return (
     <div className="relative h-screen w-full bg-black overflow-hidden font-sans select-none">
@@ -958,7 +1141,6 @@ export default function App() {
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'partners' ? 'text-amber-500' : ''}`} 
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setCurrentView('partners');
             }}
           />
@@ -966,7 +1148,6 @@ export default function App() {
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${isAIAssistantOpen ? 'text-amber-500' : ''}`} 
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setIsAIAssistantOpen(true);
             }}
           />
@@ -974,7 +1155,6 @@ export default function App() {
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'inbox' ? 'text-amber-500' : ''}`} 
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setCurrentView('inbox');
             }}
           />
@@ -982,7 +1162,6 @@ export default function App() {
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${currentView === 'settings' ? 'text-amber-500' : ''}`} 
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setCurrentView('settings');
             }}
           />
@@ -990,7 +1169,6 @@ export default function App() {
             size={22} 
             className={`cursor-pointer hover:text-white transition-colors ${isWalletOpen ? 'text-amber-500' : ''}`} 
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setIsWalletOpen(true);
             }}
           />
@@ -999,7 +1177,6 @@ export default function App() {
               currentView === 'profile' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-[#9298a6] hover:border-[#9298a6]'
             }`}
             onClick={() => {
-              if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
               setCurrentView('profile');
             }}
           >
@@ -1032,7 +1209,6 @@ export default function App() {
               onTabChange={setActiveTab} 
               onLiveClick={() => setIsLiveOpen(true)}
               onSearchClick={() => {
-                if (currentView === 'home' && videos[activeVideoIndex]) setMiniPlayerVideo(videos[activeVideoIndex]);
                 setCurrentView('discover');
               }}
             />
@@ -1074,6 +1250,7 @@ export default function App() {
                 if (user) setInitialMessageUser(user);
                 setIsMessagesOpen(true);
               }}
+              onOpenSettings={() => setCurrentView('settings')}
             />
           </div>
         )}
@@ -1104,14 +1281,39 @@ export default function App() {
             user={user} 
             videos={videos} 
             initialVideoId={selectedAdVideoId}
-            onPromote={(videoId, packageId) => {
+            onPromote={async (videoId, packageId) => {
               const pkg = [
-                { id: 'starter', cost: 50 },
-                { id: 'growth', cost: 200 },
-                { id: 'viral', cost: 750 }
+                { id: 'starter', cost: 50, views: 500 },
+                { id: 'growth', cost: 200, views: 2500 },
+                { id: 'viral', cost: 750, views: 10000 }
               ].find(p => p.id === packageId);
-              if (pkg) earnCoins(-pkg.cost, `Promotion: ${packageId}`);
-              setSelectedAdVideoId(null);
+              
+              if (pkg && user.coins >= pkg.cost) {
+                try {
+                  // Subtract coins
+                  const userRef = doc(db, 'users', user.id);
+                  await updateDoc(userRef, {
+                    coins: user.coins - pkg.cost
+                  });
+
+                  // Create campaign
+                  const campaignRef = collection(db, 'campaigns');
+                  await addDoc(campaignRef, {
+                    userId: user.id,
+                    videoId,
+                    packageId,
+                    targetViews: pkg.views,
+                    currentViews: 0,
+                    status: 'active',
+                    createdAt: serverTimestamp()
+                  });
+
+                  setSelectedAdVideoId(null);
+                  alert('Campaign launched successfully!');
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.WRITE, 'campaigns');
+                }
+              }
             }} 
           />
         )}
@@ -1119,7 +1321,7 @@ export default function App() {
 
       {/* Mini Player */}
       <AnimatePresence>
-        {miniPlayerVideo && currentView !== 'home' && (
+        {miniPlayerVideo && !['home', 'inbox', 'create', 'discover', 'ad-center', 'settings', 'mentors', 'partners', 'shop', 'profile', 'admin'].includes(currentView) && !isOverlayOpen && (
           <motion.div
             initial={{ opacity: 0, y: 100, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1219,8 +1421,9 @@ export default function App() {
       <BottomNav 
         currentView={currentView} 
         onViewChange={(view) => {
-          if (currentView === 'home' && view !== 'home' && videos[activeVideoIndex]) {
-            setMiniPlayerVideo(videos[activeVideoIndex]);
+          const hiddenViews = ['home', 'inbox', 'create', 'discover', 'ad-center', 'settings', 'mentors', 'partners', 'shop', 'profile', 'admin'];
+          if (hiddenViews.includes(view)) {
+            setMiniPlayerVideo(null);
           }
           setCurrentView(view);
         }} 
@@ -1365,6 +1568,12 @@ export default function App() {
           {/* This would normally be a swipe gesture or a hidden button */}
         </button>
       )}
+
+      <AnimatePresence>
+        {isAdminOpen && (
+          <AdminView onClose={() => setIsAdminOpen(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
