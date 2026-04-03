@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { doc, updateDoc, collection, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 import { TokCoin } from './TokCoin';
 
 interface SettingsViewProps {
@@ -59,53 +58,86 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
-  const [walletAddress, setWalletAddress] = useState(user.walletAddress || '');
+  const [walletAddress, setWalletAddress] = useState(user.wallet_address || '');
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!user.id) return;
     
-    const blockedRef = collection(db, 'users', auth.currentUser.uid, 'blocked');
-    const unsubscribe = onSnapshot(blockedRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setBlockedAccounts(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}/blocked`);
-    });
+    const fetchBlocked = async () => {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('*, blocked_profile:public_profiles!blocked_id(*)')
+        .eq('user_id', user.id);
 
-    return () => unsubscribe();
-  }, []);
+      if (error) {
+        handleSupabaseError(error, OperationType.GET, `users/${user.id}/blocked`);
+      } else {
+        setBlockedAccounts(data.map(d => ({
+          id: d.blocked_id,
+          displayName: d.blocked_profile?.display_name,
+          photoURL: d.blocked_profile?.photo_url
+        })));
+      }
+    };
+
+    fetchBlocked();
+
+    const subscription = supabase
+      .channel('blocked_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'blocked_users',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchBlocked();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user.id]);
 
   const handleSave = async () => {
-    if (!auth.currentUser) return;
+    if (!user.id) return;
     setIsSaving(true);
     try {
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await updateDoc(userRef, {
-        displayName,
-        email,
-        phone,
-        location,
-        walletAddress,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({
+          display_name: displayName,
+          email,
+          phone,
+          location,
+          wallet_address: walletAddress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
+      handleSupabaseError(error, OperationType.WRITE, `users/${user.id}`);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleUnblock = async (id: string) => {
-    if (!auth.currentUser) return;
+    if (!user.id) return;
     try {
-      await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'blocked', id));
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('blocked_id', id);
+
+      if (error) throw error;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${auth.currentUser.uid}/blocked/${id}`);
+      handleSupabaseError(error, OperationType.DELETE, `users/${user.id}/blocked/${id}`);
     }
   };
 

@@ -25,14 +25,13 @@ import { TopUpModal } from './components/TopUpModal';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
 import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield } from 'lucide-react';
-import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc, collection, addDoc, query, orderBy, increment, deleteDoc, where } from 'firebase/firestore';
+import { supabase, signInWithGoogle, logout, handleSupabaseError, OperationType } from './supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 import { commandNexusService } from './services/commandNexusService';
 
-export default function App() {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+function App() {
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [commandNexusData, setCommandNexusData] = useState<any>(null);
   const [currentView, setCurrentView] = useState<View>('home');
@@ -64,7 +63,7 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const touchStartY = useRef(0);
   
-  // Firebase Auth Listener
+  // Supabase Auth Listener
   useEffect(() => {
     const handleTuningMode = () => {
       setIsTuningMode(true);
@@ -73,101 +72,148 @@ export default function App() {
 
     window.addEventListener('nexus_tuning_mode', handleTuningMode);
     
-    const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
-      setFirebaseUser(fUser);
-      if (fUser) {
-        // Check if user exists in Firestore, if not create profile
-        const userRef = doc(db, 'users', fUser.uid);
-        try {
-          const userSnap = await getDoc(userRef);
-          if (!userSnap.exists()) {
-            const newUser = {
-              uid: fUser.uid,
-              displayName: fUser.displayName || 'New User',
-              email: fUser.email || '',
-              photoURL: fUser.photoURL || `https://picsum.photos/seed/${fUser.uid}/200/200`,
-              role: 'user',
-              createdAt: serverTimestamp(),
-              coins: 100, // Starting bonus
-              followers: 0,
-              following: 0,
-              likes: 0
-            };
-            await setDoc(userRef, newUser);
-
-            // Also create public profile
-            const publicProfileRef = doc(db, 'public_profiles', fUser.uid);
-            await setDoc(publicProfileRef, {
-              uid: fUser.uid,
-              displayName: newUser.displayName,
-              photoURL: newUser.photoURL,
-              username: `@${newUser.displayName.toLowerCase().replace(/\s+/g, '')}`,
-              followers: 0,
-              likes: 0,
-              isVerified: false,
-              updatedAt: serverTimestamp()
-            });
-
-            // Sync with CommandNexus
-            await commandNexusService.syncUser(fUser.uid, {
-              displayName: newUser.displayName,
-              email: newUser.email,
-              photoURL: newUser.photoURL
-            });
-          }
-        } catch (error) {
-          console.error("Error initializing user profile:", error);
-          // We don't throw here to ensure setIsAuthReady(true) is called
-        }
-      }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseUser(session?.user ?? null);
       setIsAuthReady(true);
+      if (session?.user) {
+        syncUserProfile(session.user);
+      }
     });
 
-    // Fallback to ensure the app loads even if Firebase is slow or fails
-    const authTimeout = setTimeout(() => {
-      setIsAuthReady(true);
-    }, 5000);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const sUser = session?.user ?? null;
+      setSupabaseUser(sUser);
+      if (sUser) {
+        syncUserProfile(sUser);
+      }
+    });
 
     return () => {
-      unsubscribe();
-      clearTimeout(authTimeout);
+      subscription.unsubscribe();
+      window.removeEventListener('nexus_tuning_mode', handleTuningMode);
     };
   }, []);
 
-  // Sync User Data from Firestore and CommandNexus
-  useEffect(() => {
-    if (firebaseUser) {
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      const unsubscribe = onSnapshot(userRef, async (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          
-          // Fetch additional data from CommandNexus
-          try {
-            const cnData = await commandNexusService.getUserData(firebaseUser.uid);
-            setCommandNexusData(cnData);
-          } catch (error) {
-            console.warn('Could not fetch CommandNexus data, using Firestore only');
-          }
+  const syncUserProfile = async (sUser: SupabaseUser) => {
+    try {
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', sUser.id)
+        .single();
 
-          setUser({
-            id: data.uid,
-            name: data.displayName,
-            username: `@${data.displayName.toLowerCase().replace(/\s+/g, '')}`,
-            avatar: data.photoURL,
-            coins: data.coins || 0,
-            followers: data.followers || 0,
-            following: data.following || 0,
-            likes: data.likes || 0,
-            role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
-          });
-        }
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-      });
-      return () => unsubscribe();
+      if (error && error.code === 'PGRST116') {
+        // User doesn't exist, create profile
+        const newUser = {
+          id: sUser.id,
+          display_name: sUser.user_metadata.full_name || 'New User',
+          email: sUser.email || '',
+          photo_url: sUser.user_metadata.avatar_url || `https://picsum.photos/seed/${sUser.id}/200/200`,
+          role: 'user',
+          coins: 100,
+          followers: 0,
+          following: 0,
+          likes: 0
+        };
+        await supabase.from('users').insert([newUser]);
+        
+        // Create public profile
+        await supabase.from('public_profiles').insert([{
+          id: sUser.id,
+          display_name: newUser.display_name,
+          photo_url: newUser.photo_url,
+          username: `@${newUser.display_name.toLowerCase().replace(/\s+/g, '')}`,
+          followers: 0,
+          likes: 0,
+          is_verified: false
+        }]);
+
+        // Sync with CommandNexus
+        await commandNexusService.syncUser(sUser.id, {
+          displayName: newUser.display_name,
+          email: newUser.email,
+          photoURL: newUser.photo_url
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing user profile:', error);
     }
-  }, [firebaseUser]);
+  };
+
+  // Sync User Data from Supabase and CommandNexus
+  useEffect(() => {
+    if (supabaseUser) {
+      // Fetch initial user data
+      const fetchUserData = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', supabaseUser.id)
+            .single();
+
+          if (error) throw error;
+          if (data) {
+            // Fetch additional data from CommandNexus
+            try {
+              const cnData = await commandNexusService.getUserData(supabaseUser.id);
+              setCommandNexusData(cnData);
+            } catch (error) {
+              console.warn('Could not fetch CommandNexus data, using Supabase only');
+            }
+
+            setUser({
+              id: data.id,
+              name: data.display_name,
+              username: `@${data.display_name.toLowerCase().replace(/\s+/g, '')}`,
+              avatar: data.photo_url,
+              coins: data.coins || 0,
+              followers: data.followers || 0,
+              following: data.following || 0,
+              likes: data.likes || 0,
+              role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
+            });
+          }
+        } catch (error) {
+          handleSupabaseError(error, OperationType.GET, `users/${supabaseUser.id}`);
+        }
+      };
+
+      fetchUserData();
+
+      // Subscribe to changes
+      const channel = supabase
+        .channel(`user_profile_${supabaseUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${supabaseUser.id}`,
+          },
+          (payload) => {
+            const data = payload.new;
+            setUser(prev => ({
+              ...prev,
+              name: data.display_name,
+              avatar: data.photo_url,
+              coins: data.coins || 0,
+              followers: data.followers || 0,
+              following: data.following || 0,
+              likes: data.likes || 0,
+              role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
+            }));
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [supabaseUser]);
 
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS);
 
@@ -236,13 +282,13 @@ export default function App() {
   
   // Coin Earning Logic
   useEffect(() => {
-    if (currentView === 'home' && firebaseUser) {
+    if (currentView === 'home' && supabaseUser) {
       const interval = setInterval(() => {
         earnCoins(1, 'watch_bonus');
       }, 30000); // Earn 1 coin every 30 seconds (reduced frequency for backend)
       return () => clearInterval(interval);
     }
-  }, [currentView, firebaseUser]);
+  }, [currentView, supabaseUser]);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -322,72 +368,140 @@ export default function App() {
 
   // Sync User Likes
   useEffect(() => {
-    if (!firebaseUser) {
+    if (!supabaseUser) {
       setUserLikes([]);
       return;
     }
 
-    const likesRef = collection(db, 'likes');
-    const q = query(likesRef, where('userId', '==', firebaseUser.uid));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const likedVideoIds = snapshot.docs.map(doc => doc.data().videoId);
-      setUserLikes(likedVideoIds);
-    });
+    const fetchLikes = async () => {
+      const { data, error } = await supabase
+        .from('likes')
+        .select('video_id')
+        .eq('user_id', supabaseUser.id);
+      
+      if (!error && data) {
+        setUserLikes(data.map(l => l.video_id));
+      }
+    };
 
-    return () => unsubscribe();
-  }, [firebaseUser]);
+    fetchLikes();
+
+    const channel = supabase
+      .channel(`user_likes_${supabaseUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'likes',
+          filter: `user_id=eq.${supabaseUser.id}`,
+        },
+        () => {
+          fetchLikes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabaseUser]);
 
   // Sync User Follows
   useEffect(() => {
-    if (!firebaseUser) {
+    if (!supabaseUser) {
       setUserFollows([]);
       return;
     }
 
-    const followsRef = collection(db, 'follows');
-    const q = query(followsRef, where('followerId', '==', firebaseUser.uid));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const followingIds = snapshot.docs.map(doc => doc.data().followingId);
-      setUserFollows(followingIds);
-    });
-
-    return () => unsubscribe();
-  }, [firebaseUser]);
-
-  // Sync Videos from Firestore
-  useEffect(() => {
-    const videosRef = collection(db, 'videos');
-    const q = query(videosRef, orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedVideos = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          isLiked: userLikes.includes(doc.id),
-          isFollowed: userFollows.includes(data.authorId)
-        };
-      }) as Video[];
+    const fetchFollows = async () => {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', supabaseUser.id);
       
-      if (fetchedVideos.length > 0) {
-        setVideos(fetchedVideos);
-      } else {
-        // Fallback to mock if no videos in DB
-        setVideos(MOCK_VIDEOS.map(v => ({ 
-          ...v, 
-          isLiked: userLikes.includes(v.id),
-          isFollowed: userFollows.includes(v.authorId)
-        })));
+      if (!error && data) {
+        setUserFollows(data.map(f => f.following_id));
       }
-    }, (error) => {
-      console.error("Error fetching videos:", error);
-      setVideos(MOCK_VIDEOS);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchFollows();
+
+    const channel = supabase
+      .channel(`user_follows_${supabaseUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'follows',
+          filter: `follower_id=eq.${supabaseUser.id}`,
+        },
+        () => {
+          fetchFollows();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabaseUser]);
+
+  // Sync Videos from Supabase
+  useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        const fetchedVideos = data.map(v => ({
+          ...v,
+          id: v.id,
+          isLiked: userLikes.includes(v.id),
+          isFollowed: userFollows.includes(v.author_id)
+        })) as Video[];
+
+        if (fetchedVideos.length > 0) {
+          setVideos(fetchedVideos);
+        } else {
+          setVideos(MOCK_VIDEOS.map(v => ({ 
+            ...v, 
+            isLiked: userLikes.includes(v.id),
+            isFollowed: userFollows.includes(v.authorId)
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching videos:", error);
+        setVideos(MOCK_VIDEOS);
+      }
+    };
+
+    fetchVideos();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('videos_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'videos',
+        },
+        () => {
+          fetchVideos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userLikes, userFollows]);
 
   const isOverlayOpen = isMessagesOpen || isAIAssistantOpen || isWalletOpen || isAffiliateOpen || isMakeupRoomOpen || isLiveOpen || isMissionOpen || isMonetizationOpen;
@@ -400,44 +514,44 @@ export default function App() {
     }
   }, [currentView, isOverlayOpen]);
 
-  const handleVideoUpload = async (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => {
-    if (!firebaseUser) return;
+  const handleVideoUpload = async (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string; audioUrl?: string; audioName?: string }) => {
+    if (!supabaseUser) return;
 
     setIsRefreshing(true);
     try {
       const newVideo = {
-        author: user.username || user.displayName,
-        authorId: firebaseUser.uid,
-        authorPhoto: user.photoURL,
+        author: user.username || user.name,
+        author_id: supabaseUser.id,
+        author_photo: user.avatar,
         description: videoData.description,
         url: videoData.url,
-        song: 'Original Sound - ' + user.displayName,
+        song: videoData.audioName || ('Original Sound - ' + user.name),
+        audio_url: videoData.audioUrl || null,
         likes: 0,
         comments: 0,
         shares: 0,
-        isLiked: false,
-        isFollowed: false,
         effect: videoData.effect,
-        customEffectUrl: videoData.customEffectUrl,
-        createdAt: serverTimestamp()
+        custom_effect_url: videoData.customEffectUrl,
+        created_at: new Date().toISOString()
       };
       
-      const docRef = await addDoc(collection(db, 'videos'), newVideo);
+      const { data, error } = await supabase.from('videos').insert([newVideo]).select();
+      if (error) throw error;
       
       // Reward for uploading
-      await commandNexusService.earnCoins(firebaseUser.uid, 50, 'Video Upload Reward');
+      await commandNexusService.earnCoins(supabaseUser.id, 50, 'Video Upload Reward');
       
       setCurrentView('home');
       setActiveVideoIndex(0);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'videos');
+      handleSupabaseError(error, OperationType.CREATE, 'videos');
     } finally {
       setIsRefreshing(false);
     }
   };
 
   const earnCoins = async (amount: number, reason: string = 'bonus') => {
-    if (!firebaseUser) return;
+    if (!supabaseUser) return;
     
     // Optimistic update
     setUser(prev => ({ ...prev, coins: prev.coins + amount }));
@@ -446,34 +560,34 @@ export default function App() {
 
     try {
       // Update backend
-      await commandNexusService.earnCoins(firebaseUser.uid, amount, reason);
+      await commandNexusService.earnCoins(supabaseUser.id, amount, reason);
       
-      // Also update Firestore for now as a mirror
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      await updateDoc(userRef, {
-        coins: (user.coins || 0) + amount
-      });
+      // Also update Supabase mirror
+      await supabase
+        .from('users')
+        .update({ coins: (user.coins || 0) + amount })
+        .eq('id', supabaseUser.id);
     } catch (error) {
       console.error('Failed to sync coins to backend:', error);
     }
   };
 
   const handleSwap = async (amount: number, cryptoType: string) => {
-    if (!firebaseUser) return;
+    if (!supabaseUser) return;
 
     // Optimistic update
     setUser(prev => ({ ...prev, coins: prev.coins - amount }));
     
     try {
-      // Update Firestore mirror
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      await updateDoc(userRef, {
-        coins: (user.coins || 0) - amount
-      });
+      // Update Supabase mirror
+      await supabase
+        .from('users')
+        .update({ coins: (user.coins || 0) - amount })
+        .eq('id', supabaseUser.id);
       
       alert(`Successfully swapped ${amount} TokCoins for ${cryptoType}!`);
     } catch (error) {
-      console.error('Failed to sync swap to Firestore:', error);
+      console.error('Failed to sync swap to Supabase:', error);
     }
   };
 
@@ -487,32 +601,25 @@ export default function App() {
   };
 
   const handleLike = async (videoId: string, isLiked: boolean) => {
-    if (!firebaseUser) return;
+    if (!supabaseUser) return;
 
     try {
-      const videoRef = doc(db, 'videos', videoId);
-      const likeRef = doc(db, 'likes', `${firebaseUser.uid}_${videoId}`);
-      
       if (!isLiked) {
         // Like the video
-        await setDoc(likeRef, {
-          userId: firebaseUser.uid,
-          videoId: videoId,
-          createdAt: serverTimestamp()
-        });
+        await supabase.from('likes').insert([{
+          id: `${supabaseUser.id}_${videoId}`,
+          user_id: supabaseUser.id,
+          video_id: videoId
+        }]);
         
-        await updateDoc(videoRef, {
-          likes: increment(1)
-        });
+        await supabase.rpc('increment_video_likes', { video_id: videoId });
         
         earnCoins(5, 'Video Like Reward');
       } else {
         // Unlike the video
-        await deleteDoc(likeRef);
+        await supabase.from('likes').delete().eq('id', `${supabaseUser.id}_${videoId}`);
         
-        await updateDoc(videoRef, {
-          likes: increment(-1)
-        });
+        await supabase.rpc('decrement_video_likes', { video_id: videoId });
       }
     } catch (error) {
       console.error("Error handling like:", error);
@@ -525,41 +632,27 @@ export default function App() {
   };
 
   const handleFollow = async (authorId: string, isFollowed: boolean) => {
-    if (!firebaseUser || authorId === firebaseUser.uid) return;
+    if (!supabaseUser || authorId === supabaseUser.id) return;
 
     try {
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      const authorRef = doc(db, 'users', authorId);
-      const followRef = doc(db, 'follows', `${firebaseUser.uid}_${authorId}`);
-      
       if (!isFollowed) {
         // Follow
-        await setDoc(followRef, {
-          followerId: firebaseUser.uid,
-          followingId: authorId,
-          createdAt: serverTimestamp()
-        });
+        await supabase.from('follows').insert([{
+          id: `${supabaseUser.id}_${authorId}`,
+          follower_id: supabaseUser.id,
+          following_id: authorId
+        }]);
         
-        await updateDoc(userRef, {
-          following: increment(1)
-        });
-        
-        await updateDoc(authorRef, {
-          followers: increment(1)
-        });
+        await supabase.rpc('increment_user_following', { user_id: supabaseUser.id });
+        await supabase.rpc('increment_user_followers', { user_id: authorId });
         
         earnCoins(10, 'New Follow Reward');
       } else {
         // Unfollow
-        await deleteDoc(followRef);
+        await supabase.from('follows').delete().eq('id', `${supabaseUser.id}_${authorId}`);
         
-        await updateDoc(userRef, {
-          following: increment(-1)
-        });
-        
-        await updateDoc(authorRef, {
-          followers: increment(-1)
-        });
+        await supabase.rpc('decrement_user_following', { user_id: supabaseUser.id });
+        await supabase.rpc('decrement_user_followers', { user_id: authorId });
       }
     } catch (error) {
       console.error("Error handling follow:", error);
@@ -585,7 +678,7 @@ export default function App() {
     );
   }
 
-  if (!firebaseUser) {
+  if (!supabaseUser) {
     return (
       <div className="h-screen w-full bg-black flex flex-col items-center justify-center p-6 text-center">
         <motion.div 
@@ -1577,3 +1670,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;

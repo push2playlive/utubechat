@@ -1,24 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock, Pencil, Edit3, MessageSquare, Plus, MapPin, Copy, Forward } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType, storage, ref, uploadBytes, getDownloadURL } from '../firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp, 
-  getDocs,
-  limit,
-  setDoc,
-  Timestamp,
-  writeBatch
-} from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 
 interface MessagesViewProps {
   onClose: () => void;
@@ -70,25 +53,47 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   // Sync Chats
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!supabase.auth.getSession()) return;
 
-    const q = query(
-      collection(db, 'chats'),
-      where('participants', 'array-contains', auth.currentUser.uid),
-      orderBy('lastMessageAt', 'desc')
-    );
+    const fetchChats = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setChats(chatList);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'chats');
-    });
+      const { data, error } = await supabase
+        .from('chats')
+        .select('*')
+        .contains('participants', [user.id])
+        .order('last_message_at', { ascending: false });
 
-    return () => unsubscribe();
+      if (error) {
+        handleSupabaseError(error, OperationType.GET, 'chats');
+      } else {
+        setChats(data.map(c => ({
+          ...c,
+          lastMessage: c.last_message,
+          lastMessageAt: c.last_message_at,
+          otherUserName: c.other_user_name,
+          otherUserPhoto: c.other_user_photo
+        })));
+      }
+    };
+
+    fetchChats();
+
+    const subscription = supabase
+      .channel('chats_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chats' 
+      }, () => {
+        fetchChats();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Sync Messages
@@ -98,22 +103,46 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
       return;
     }
 
-    const q = query(
-      collection(db, 'chats', activeChat, 'messages'),
-      orderBy('createdAt', 'asc')
-    );
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('chat_id', activeChat)
+        .order('created_at', { ascending: true });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMessages(msgList);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `chats/${activeChat}/messages`);
-    });
+      if (error) {
+        handleSupabaseError(error, OperationType.GET, `chats/${activeChat}/messages`);
+      } else {
+        setMessages(data.map(m => ({
+          ...m,
+          senderId: m.sender_id,
+          senderName: m.sender_name,
+          createdAt: m.created_at,
+          imageUrl: m.image_url,
+          replyTo: m.reply_to,
+          isRead: m.is_read,
+          isEdited: m.is_edited
+        })));
+      }
+    };
 
-    return () => unsubscribe();
+    fetchMessages();
+
+    const subscription = supabase
+      .channel(`messages_${activeChat}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `chat_id=eq.${activeChat}`
+      }, () => {
+        fetchMessages();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [activeChat]);
 
   useEffect(() => {
@@ -139,27 +168,29 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     
     const fetchUsers = async () => {
       try {
-        const usersRef = collection(db, 'public_profiles');
-        let q;
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) return;
+
+        let query = supabase
+          .from('public_profiles')
+          .select('*')
+          .neq('id', currentUser.id)
+          .limit(10);
+
         if (userSearchQuery.trim()) {
-          // Simple prefix search simulation
-          q = query(
-            usersRef, 
-            where('displayName', '>=', userSearchQuery),
-            where('displayName', '<=', userSearchQuery + '\uf8ff'),
-            limit(10)
-          );
-        } else {
-          q = query(usersRef, limit(10));
+          query = query.ilike('display_name', `%${userSearchQuery}%`);
         }
         
-        const snapshot = await getDocs(q);
-        const users = snapshot.docs
-          .map(doc => doc.data())
-          .filter((u: any) => u.uid !== auth.currentUser?.uid);
-        setAvailableUsers(users);
+        const { data, error } = await query;
+        if (error) throw error;
+
+        setAvailableUsers(data.map(u => ({
+          uid: u.id,
+          displayName: u.display_name,
+          photoURL: u.photo_url
+        })));
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, 'public_profiles');
+        handleSupabaseError(error, OperationType.GET, 'public_profiles');
       }
     };
     fetchUsers();
@@ -167,15 +198,25 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeChat || !auth.currentUser) return;
+    if (!file || !activeChat) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
     setIsUploading(true);
     try {
-      const storageRef = ref(storage, `chats/${activeChat}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const filePath = `chats/${activeChat}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(filePath);
       
-      await handleSendMessage(undefined, '', 'image', downloadURL);
+      await handleSendMessage(undefined, '', 'image', publicUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
       showPushNotification('Failed to upload image');
@@ -187,54 +228,71 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      await deleteDoc(doc(db, 'chats', chatId));
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', chatId);
+
+      if (error) throw error;
+
       if (activeChat === chatId) {
         setActiveChat(null);
       }
       showPushNotification('Conversation deleted');
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `chats/${chatId}`);
+      handleSupabaseError(error, OperationType.DELETE, `chats/${chatId}`);
     }
   };
 
   const handleSendMessage = async (e?: React.FormEvent, content?: string, type: 'text' | 'gif' | 'image' = 'text', imageUrl?: string) => {
     if (e) e.preventDefault();
-    console.log('Sending message...', { activeChat, currentUser: auth.currentUser?.uid, type });
-    if (!auth.currentUser || !activeChat) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !activeChat) return;
 
     const finalContent = content || messageText;
     if (!finalContent.trim() && type !== 'image') return;
 
     try {
       if (editingMessage) {
-        const msgRef = doc(db, 'chats', activeChat, 'messages', editingMessage.id);
-        await updateDoc(msgRef, {
-          text: finalContent,
-          isEdited: true,
-          updatedAt: serverTimestamp()
-        });
+        const { error } = await supabase
+          .from('messages')
+          .update({
+            text: finalContent,
+            is_edited: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingMessage.id);
+
+        if (error) throw error;
         setEditingMessage(null);
       } else {
         const msgData = {
-          chatId: activeChat,
+          chat_id: activeChat,
           text: finalContent,
-          senderId: auth.currentUser.uid,
-          senderName: auth.currentUser.displayName || 'User',
-          createdAt: serverTimestamp(),
+          sender_id: user.id,
+          sender_name: user.user_metadata.display_name || 'User',
           type,
-          imageUrl: imageUrl || null,
-          replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, senderName: replyingTo.senderName } : null,
-          isRead: false
+          image_url: imageUrl || null,
+          reply_to: replyingTo ? { id: replyingTo.id, text: replyingTo.text, senderName: replyingTo.senderName } : null,
+          is_read: false
         };
 
-        await addDoc(collection(db, 'chats', activeChat, 'messages'), msgData);
+        const { error: msgError } = await supabase
+          .from('messages')
+          .insert(msgData);
+
+        if (msgError) throw msgError;
         
         // Update chat last message
-        const chatRef = doc(db, 'chats', activeChat);
-        await updateDoc(chatRef, {
-          lastMessage: type === 'gif' ? 'Sent a GIF' : type === 'image' ? 'Sent an image' : finalContent,
-          lastMessageAt: serverTimestamp()
-        });
+        const { error: chatError } = await supabase
+          .from('chats')
+          .update({
+            last_message: type === 'gif' ? 'Sent a GIF' : type === 'image' ? 'Sent an image' : finalContent,
+            last_message_at: new Date().toISOString()
+          })
+          .eq('id', activeChat);
+
+        if (chatError) throw chatError;
       }
 
       setMessageText('');
@@ -242,22 +300,25 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
       setShowEmojiPicker(false);
       setShowGifPicker(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `chats/${activeChat}/messages`);
+      handleSupabaseError(error, OperationType.WRITE, `chats/${activeChat}/messages`);
     }
   };
 
   const handleDeleteMessage = async (id: string) => {
     if (!activeChat) return;
-    console.log('Deleting message...', { id, activeChat });
     try {
-      await deleteDoc(doc(db, 'chats', activeChat, 'messages', id));
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `chats/${activeChat}/messages/${id}`);
+      handleSupabaseError(error, OperationType.DELETE, `chats/${activeChat}/messages/${id}`);
     }
   };
 
   const handleEditMessage = (msg: any) => {
-    console.log('Editing message...', msg);
     setEditingMessage(msg);
     setMessageText(msg.text);
     setShowEmojiPicker(false);
@@ -269,45 +330,50 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     if (!window.confirm('Are you sure you want to clear all messages in this chat?')) return;
     
     try {
-      const messagesRef = collection(db, 'chats', activeChat, 'messages');
-      const snapshot = await getDocs(messagesRef);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('chat_id', activeChat);
+
+      if (error) throw error;
+
       setMessages([]);
       setShowChatMenu(false);
       showPushNotification('Chat cleared');
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `chats/${activeChat}/messages`);
+      handleSupabaseError(error, OperationType.DELETE, `chats/${activeChat}/messages`);
     }
   };
   const handleBlockUser = async () => {
-    if (!auth.currentUser || !activeChat) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !activeChat) return;
+
     const activeChatData = chats.find(c => c.id === activeChat);
     if (!activeChatData) return;
 
-    const otherUserId = activeChatData.participants.find((uid: string) => uid !== auth.currentUser?.uid);
+    const otherUserId = activeChatData.participants.find((uid: string) => uid !== user.id);
     
     try {
-      // Add to blocked accounts
-      await setDoc(doc(db, 'users', auth.currentUser.uid, 'blocked', otherUserId), {
-        uid: otherUserId,
-        displayName: activeChatData.otherUserName || 'User',
-        blockedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({
+          user_id: user.id,
+          blocked_id: otherUserId
+        });
+
+      if (error) throw error;
 
       showPushNotification(`${activeChatData.otherUserName || 'User'} has been blocked`);
       setActiveChat(null);
       setShowChatMenu(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}/blocked/${otherUserId}`);
+      handleSupabaseError(error, OperationType.WRITE, `users/${user.id}/blocked/${otherUserId}`);
     }
   };
 
   const handleStartNewChat = async (otherUser: { uid: string, displayName: string, photoURL: string }) => {
-    if (!auth.currentUser) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
     // Check if chat already exists
     const existingChat = chats.find(c => c.participants.includes(otherUser.uid));
@@ -319,22 +385,27 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
     try {
       const chatData = {
-        participants: [auth.currentUser.uid, otherUser.uid],
-        participantNames: [auth.currentUser.displayName || 'User', otherUser.displayName],
-        participantPhotos: [auth.currentUser.photoURL || '', otherUser.photoURL],
-        lastMessage: 'Started a new conversation',
-        lastMessageAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        // For easier querying/displaying in this simple app
-        otherUserName: otherUser.displayName,
-        otherUserPhoto: otherUser.photoURL
+        participants: [user.id, otherUser.uid],
+        participant_names: [user.user_metadata.display_name || 'User', otherUser.displayName],
+        participant_photos: [user.user_metadata.avatar_url || '', otherUser.photoURL],
+        last_message: 'Started a new conversation',
+        last_message_at: new Date().toISOString(),
+        other_user_name: otherUser.displayName,
+        other_user_photo: otherUser.photoURL
       };
 
-      const docRef = await addDoc(collection(db, 'chats'), chatData);
-      setActiveChat(docRef.id);
+      const { data, error } = await supabase
+        .from('chats')
+        .insert(chatData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setActiveChat(data.id);
       setIsNewChatOpen(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'chats');
+      handleSupabaseError(error, OperationType.WRITE, 'chats');
     }
   };
 
@@ -452,8 +523,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                         <span className="text-white font-bold text-sm">{chat.otherUserName}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500 text-[10px]">
-                            {chat.lastMessageAt instanceof Timestamp ? chat.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                          </span>
+                        {chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                      </span>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -547,7 +618,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   messages.map((msg) => (
                   <div 
                     key={msg.id} 
-                    className={`flex flex-col group ${msg.senderId === auth.currentUser?.uid ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col group ${msg.senderId === supabase.auth.getSession()?.data.session?.user.id ? 'items-end' : 'items-start'}`}
                   >
                     {msg.replyTo && (
                       <div className="bg-white/5 px-3 py-1 rounded-t-lg text-[10px] text-gray-500 mb-[-4px] border-l-2 border-pink-500 max-w-[70%] truncate">
@@ -556,7 +627,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     )}
                     <div className="flex items-center gap-2 max-w-[85%]">
                       {/* Message Tools - Always visible on hover, but also add a small indicator */}
-                      {msg.senderId === auth.currentUser?.uid && (
+                      {msg.senderId === supabase.auth.getSession()?.data.session?.user.id && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 rounded-full px-2 py-1 shadow-xl border border-white/20 ml-2">
                           <button 
                             onClick={() => setReplyingTo(msg)} 
@@ -595,7 +666,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                           </button>
                         </div>
                       )}
-                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === auth.currentUser?.uid ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === supabase.auth.getSession()?.data.session?.user.id ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                         {msg.type === 'gif' ? (
                           <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" referrerPolicy="no-referrer" />
                         ) : msg.type === 'image' ? (
@@ -612,7 +683,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                           </div>
                         )}
                       </div>
-                      {msg.senderId !== auth.currentUser?.uid && (
+                      {msg.senderId !== supabase.auth.getSession()?.data.session?.user.id && (
                         <div className="flex items-center gap-2 transition-opacity bg-black/60 rounded-full px-3 py-1.5 shadow-lg border border-white/10">
                           <button onClick={() => setReplyingTo(msg)} className="text-gray-300 hover:text-white p-1 transition-colors" title="Reply"><Reply size={18} /></button>
                         </div>
@@ -620,9 +691,9 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-[8px] text-gray-600 uppercase tracking-widest">
-                        {msg.createdAt instanceof Timestamp ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                       </span>
-                      {msg.senderId === auth.currentUser?.uid && (
+                      {msg.senderId === supabase.auth.getSession()?.data.session?.user.id && (
                         <span className="text-[8px] text-pink-500 font-bold">
                           {msg.isRead ? 'Read' : 'Sent'}
                         </span>

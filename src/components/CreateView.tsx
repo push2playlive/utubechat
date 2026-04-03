@@ -17,7 +17,7 @@ interface Clip {
 
 interface CreateViewProps {
   onClose: () => void;
-  onUpload: (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string }) => void;
+  onUpload: (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string; audioUrl?: string; audioName?: string }) => void;
   onLive?: () => void;
   userId?: string;
 }
@@ -359,7 +359,9 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
         url: clips[0].url,
         description: description,
         effect: clips[0].effect,
-        customEffectUrl: clips[0].customEffectUrl
+        customEffectUrl: clips[0].customEffectUrl,
+        audioUrl: audioTrack?.url,
+        audioName: audioTrack?.name
       });
     }
     setIsUploading(false);
@@ -766,12 +768,18 @@ export const CreateView: React.FC<CreateViewProps> = ({ onClose, onUpload, onLiv
                       </div>
                     </div>
                   ) : (
-                    <button 
-                      onClick={() => { setStep('ai-tools'); setActiveAITool('music'); }}
-                      className="h-8 px-4 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center gap-2 text-gray-500 hover:text-white transition-all text-[10px] font-bold"
-                    >
-                      <PlusCircle size={14} /> Add Audio Track
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => { setStep('ai-tools'); setActiveAITool('music'); }}
+                        className="h-8 px-4 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center gap-2 text-gray-500 hover:text-white transition-all text-[10px] font-bold"
+                      >
+                        <Sparkles size={14} /> AI Music
+                      </button>
+                      <label className="h-8 px-4 rounded-md bg-white/5 border border-dashed border-white/10 flex items-center gap-2 text-gray-500 hover:text-white transition-all text-[10px] font-bold cursor-pointer">
+                        <PlusCircle size={14} /> Upload Audio
+                        <input type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+                      </label>
+                    </div>
                   )}
                 </div>
 

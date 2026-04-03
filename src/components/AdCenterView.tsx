@@ -4,8 +4,7 @@ import { Megaphone, TrendingUp, Users, Eye, DollarSign, Plus, ChevronRight, BarC
 import { User, Video } from '../types';
 import { TokCoin } from './TokCoin';
 import { TopUpModal } from './TopUpModal';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 
 interface AdCenterViewProps {
   user: User;
@@ -61,17 +60,44 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
   // Sync Campaigns
   React.useEffect(() => {
     if (!user.id) return;
-    const q = query(
-      collection(db, 'campaigns'),
-      where('userId', '==', user.id),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setCampaigns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'campaigns');
-    });
-    return () => unsubscribe();
+    
+    const fetchCampaigns = async () => {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        handleSupabaseError(error, OperationType.GET, 'campaigns');
+      } else {
+        setCampaigns(data);
+      }
+    };
+
+    fetchCampaigns();
+
+    const subscription = supabase
+      .channel('campaigns_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'campaigns',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setCampaigns(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setCampaigns(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
+        } else if (payload.eventType === 'DELETE') {
+          setCampaigns(prev => prev.filter(c => c.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user.id]);
 
   const handlePromote = () => {
@@ -386,8 +412,8 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                   </div>
                 ) : (
                   campaigns.map((campaign) => {
-                    const video = videos.find(v => v.id === campaign.videoId) || videos[0];
-                    const progress = Math.min(100, Math.round((campaign.currentViews / campaign.targetViews) * 100));
+                    const video = videos.find(v => v.id === campaign.video_id) || videos[0];
+                    const progress = Math.min(100, Math.round((campaign.current_views / campaign.target_views) * 100));
                     
                     return (
                       <div key={campaign.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row gap-6">
@@ -398,7 +424,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                         <div className="flex-1 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <h4 className="text-white font-black text-lg">{campaign.packageId.charAt(0).toUpperCase() + campaign.packageId.slice(1)} Boost</h4>
+                              <h4 className="text-white font-black text-lg">{campaign.package_id.charAt(0).toUpperCase() + campaign.package_id.slice(1)} Boost</h4>
                               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                 campaign.status === 'active' ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-500'
                               }`}>
@@ -407,7 +433,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                             </div>
                             <div className="flex items-center gap-4 text-gray-400 text-xs mb-4">
                               <div className="flex items-center gap-1">
-                                <Eye size={12} /> {campaign.currentViews.toLocaleString()} / {campaign.targetViews.toLocaleString()} Views
+                                <Eye size={12} /> {campaign.current_views.toLocaleString()} / {campaign.target_views.toLocaleString()} Views
                               </div>
                               <div className="flex items-center gap-1">
                                 <TrendingUp size={12} /> {progress}% Complete
@@ -423,7 +449,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                               />
                             </div>
                             <div className="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                              <span>Started {campaign.createdAt instanceof Timestamp ? campaign.createdAt.toDate().toLocaleDateString() : 'Just now'}</span>
+                              <span>Started {campaign.created_at ? new Date(campaign.created_at).toLocaleDateString() : 'Just now'}</span>
                               <span>{campaign.status === 'active' ? 'Running' : 'Paused'}</span>
                             </div>
                           </div>

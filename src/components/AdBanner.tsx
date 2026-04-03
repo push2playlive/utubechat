@@ -11,7 +11,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ type }) => {
       title: 'Voice2Fire: Be Paid To Be Social',
       desc: 'Build your 5-tier affiliate network and earn passive income.',
       cta: 'Sign Up Now',
-      image: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_logo.png',
+      image: 'https://picsum.photos/seed/v2f/400/200',
       color: 'from-orange-600 to-red-900'
     },
     {
@@ -25,7 +25,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ type }) => {
       title: 'Push2Play: Live & Earn',
       desc: 'Watch live events and earn TokCoins in real-time.',
       cta: 'Watch Now',
-      image: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/push2play_logo.png',
+      image: 'https://picsum.photos/seed/p2p/400/200',
       color: 'from-pink-600 to-purple-900'
     },
     {

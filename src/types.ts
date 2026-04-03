@@ -6,6 +6,8 @@ export interface Video {
   authorPhoto: string;
   description: string;
   song: string;
+  audioUrl?: string;
+  audioName?: string;
   likes: number;
   comments: number;
   shares: number;

@@ -5,26 +5,26 @@ export const PARTNER_SITES: PartnerSite[] = [
     name: 'UTubeChat', 
     domain: 'utubechat.com', 
     icon: 'MessageCircle',
-    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4' // Using ad as placeholder
+    logo: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' // Using ad as placeholder
   },
   { 
     name: 'Voice2Fire', 
     domain: 'voice2fire.com', 
     icon: 'Flame',
-    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_logo.png'
+    logo: 'https://picsum.photos/seed/v2f/200/200'
   },
   { 
     name: 'Push2Play', 
     domain: 'push2play.live', 
     icon: 'Play',
-    logo: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/push2play_logo.png'
+    logo: 'https://picsum.photos/seed/p2p/200/200'
   },
 ];
 
 export const MOCK_VIDEOS: Video[] = [
   {
     id: 'v2f_ad_1',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     author: '@voice2fire_official',
     authorId: 'v2f_official',
     authorPhoto: 'https://picsum.photos/seed/v2f/200/200',
@@ -39,7 +39,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: 'utc_ad_1',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     author: '@utubechat_official',
     authorId: 'utc_official',
     authorPhoto: 'https://picsum.photos/seed/utc/200/200',
@@ -54,7 +54,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: 'v2f_ad_2',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_2.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     author: '@voice2fire_official',
     authorId: 'v2f_official',
     authorPhoto: 'https://picsum.photos/seed/v2f/200/200',
@@ -69,7 +69,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: '1',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     author: '@neon_dancer',
     authorId: 'neon_dancer',
     authorPhoto: 'https://picsum.photos/seed/neon/200/200',
@@ -84,7 +84,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: '4',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/utubechat_ad.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     author: '@night_mover',
     authorId: 'night_mover',
     authorPhoto: 'https://picsum.photos/seed/night/200/200',
@@ -99,7 +99,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: '5',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_2.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     author: '@faith_live',
     authorId: 'faith_live',
     authorPhoto: 'https://picsum.photos/seed/faith/200/200',
@@ -114,7 +114,7 @@ export const MOCK_VIDEOS: Video[] = [
   },
   {
     id: '2',
-    url: '/api/v1/files/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/voice2fire_ad_1.mp4',
+    url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     author: '@nature_lover',
     authorId: 'nature_lover',
     authorPhoto: 'https://picsum.photos/seed/nature/200/200',

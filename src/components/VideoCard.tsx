@@ -42,6 +42,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   loop = true
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showHeart, setShowHeart] = useState(false);
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
@@ -73,9 +74,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       if (videoRef.current) {
         if (videoRef.current.paused) {
           videoRef.current.play();
+          if (audioRef.current) audioRef.current.play();
           setIsPlaying(true);
         } else {
           videoRef.current.pause();
+          if (audioRef.current) audioRef.current.pause();
           setIsPlaying(false);
         }
       }
@@ -109,6 +112,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       const percent = e.detail;
       const newTime = (percent / 100) * videoRef.current.duration;
       videoRef.current.currentTime = newTime;
+      if (audioRef.current) audioRef.current.currentTime = newTime;
     };
 
     window.addEventListener('video_toggle_fullscreen', handleToggleFullscreen);
@@ -145,9 +149,17 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       if (isActive) {
         videoRef.current.play().catch(err => console.error("Video play failed", err));
         videoRef.current.playbackRate = playbackRate;
+        if (audioRef.current) {
+          audioRef.current.play().catch(err => console.error("Audio play failed", err));
+          audioRef.current.playbackRate = playbackRate;
+        }
       } else {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
       }
     }
   }, [isActive, playbackRate]);
@@ -207,6 +219,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     const newTime = pos * videoRef.current.duration;
     
     videoRef.current.currentTime = newTime;
+    if (audioRef.current) audioRef.current.currentTime = newTime;
     setProgress(pos * 100);
   };
 
@@ -249,7 +262,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         }}
         loop={loop}
         playsInline
-        muted={isMuted}
+        muted={isMuted || !!video.audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => {
           if (isAutoScrollEnabled) {
@@ -265,6 +278,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           }
         }}
       />
+      {video.audioUrl && (
+        <audio
+          ref={audioRef}
+          src={video.audioUrl}
+          loop={loop}
+          muted={isMuted}
+        />
+      )}
 
       {video.effect === 'custom' && video.customEffectUrl && (
         <div className="absolute inset-0 pointer-events-none z-10">

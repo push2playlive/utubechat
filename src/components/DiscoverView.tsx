@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, TrendingUp, User, Play, ChevronRight, X } from 'lucide-react';
 import { Video, User as UserType } from '../types';
 import { MOCK_VIDEOS } from '../constants';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 
 interface DiscoverViewProps {
   onClose?: () => void;
@@ -21,24 +20,26 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onClose, initialQuer
   useEffect(() => {
     const fetchSuggested = async () => {
       try {
-        const q = query(collection(db, 'public_profiles'), limit(5));
-        const snapshot = await getDocs(q);
-        const users = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: data.uid,
-            name: data.displayName,
-            username: data.username,
-            avatar: data.photoURL,
-            coins: 0,
-            followers: data.followers || 0,
-            following: 0,
-            likes: data.likes || 0
-          };
-        });
+        const { data, error } = await supabase
+          .from('public_profiles')
+          .select('*')
+          .limit(5);
+
+        if (error) throw error;
+        
+        const users = data.map(u => ({
+          id: u.id,
+          name: u.display_name,
+          username: u.username,
+          avatar: u.photo_url,
+          coins: 0,
+          followers: u.followers || 0,
+          following: 0,
+          likes: u.likes || 0
+        }));
         setSuggestedUsers(users);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, 'public_profiles');
+        handleSupabaseError(error, OperationType.GET, 'public_profiles');
       }
     };
     fetchSuggested();
@@ -50,42 +51,37 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onClose, initialQuer
       const search = async () => {
         const qStr = searchQuery.toLowerCase();
         
-        // Search Videos (Mock for now, but could be Firestore)
+        // Search Videos (Mock for now, but could be Supabase)
         const filteredVideos = MOCK_VIDEOS.filter(v => 
           v.description.toLowerCase().includes(qStr) || 
           v.author.toLowerCase().includes(qStr) ||
           v.song.toLowerCase().includes(qStr)
         );
 
-        // Search Users in Firestore
+        // Search Users in Supabase
         try {
-          // Note: Firestore doesn't support full-text search easily without external services,
-          // but we can do a simple prefix search or just fetch and filter for this demo.
-          // For a real app, we'd use Algolia or similar.
-          const userQuery = query(collection(db, 'public_profiles'), limit(20));
-          const userSnapshot = await getDocs(userQuery);
-          const allUsers = userSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: data.uid,
-              name: data.displayName,
-              username: data.username,
-              avatar: data.photoURL,
-              coins: 0,
-              followers: data.followers || 0,
-              following: 0,
-              likes: data.likes || 0
-            };
-          });
+          const { data, error } = await supabase
+            .from('public_profiles')
+            .select('*')
+            .or(`display_name.ilike.%${qStr}%,username.ilike.%${qStr}%`)
+            .limit(20);
 
-          const filteredUsers = allUsers.filter(u => 
-            u.name.toLowerCase().includes(qStr) || 
-            u.username.toLowerCase().includes(qStr)
-          );
+          if (error) throw error;
+
+          const filteredUsers = data.map(u => ({
+            id: u.id,
+            name: u.display_name,
+            username: u.username,
+            avatar: u.photo_url,
+            coins: 0,
+            followers: u.followers || 0,
+            following: 0,
+            likes: u.likes || 0
+          }));
 
           setResults({ videos: filteredVideos, users: filteredUsers });
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, 'public_profiles');
+          handleSupabaseError(error, OperationType.GET, 'public_profiles');
         } finally {
           setIsSearching(false);
         }
