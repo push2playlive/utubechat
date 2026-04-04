@@ -25,7 +25,7 @@ import { TopUpModal } from './components/TopUpModal';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
 import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield } from 'lucide-react';
-import { supabase, signInWithGoogle, logout, handleSupabaseError, OperationType } from './supabase';
+import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType } from './supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 import { commandNexusService } from './services/commandNexusService';
@@ -63,6 +63,30 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const touchStartY = useRef(0);
   
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setAuthError(null);
+      await signInWithGoogle();
+    } catch (error: any) {
+      setAuthError(error.message || 'Failed to sign in with Google');
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    try {
+      setAuthError(null);
+      const data = await signInAnonymously();
+      if (data.user) {
+        setSupabaseUser(data.user);
+        syncUserProfile(data.user);
+      }
+    } catch (error: any) {
+      setAuthError(error.message || 'Failed to sign in as guest');
+    }
+  };
+
   // Supabase Auth Listener
   useEffect(() => {
     const handleTuningMode = () => {
@@ -110,7 +134,7 @@ function App() {
           display_name: sUser.user_metadata.full_name || 'New User',
           email: sUser.email || '',
           photo_url: sUser.user_metadata.avatar_url || `https://picsum.photos/seed/${sUser.id}/200/200`,
-          role: 'user',
+          role: sUser.email === 'findlaygary25@gmail.com' ? 'admin' : 'user',
           coins: 100,
           followers: 0,
           following: 0,
@@ -126,7 +150,8 @@ function App() {
           username: `@${newUser.display_name.toLowerCase().replace(/\s+/g, '')}`,
           followers: 0,
           likes: 0,
-          is_verified: false
+          is_verified: sUser.email === 'findlaygary25@gmail.com',
+          role: newUser.role
         }]);
 
         // Sync with CommandNexus
@@ -135,6 +160,10 @@ function App() {
           email: newUser.email,
           photoURL: newUser.photo_url
         });
+      } else if (userProfile && sUser.email === 'findlaygary25@gmail.com' && userProfile.role !== 'admin') {
+        // Ensure this specific email is always admin
+        await supabase.from('users').update({ role: 'admin' }).eq('id', sUser.id);
+        await supabase.from('public_profiles').update({ role: 'admin' }).eq('id', sUser.id);
       }
     } catch (error) {
       console.error('Error syncing user profile:', error);
@@ -172,7 +201,7 @@ function App() {
               followers: data.followers || 0,
               following: data.following || 0,
               likes: data.likes || 0,
-              role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
+              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user')
             });
           }
         } catch (error) {
@@ -203,7 +232,7 @@ function App() {
               followers: data.followers || 0,
               following: data.following || 0,
               likes: data.likes || 0,
-              role: data.role || (data.email === 'push2playlive@gmail.com' ? 'admin' : 'user')
+              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user')
             }));
           }
         )
@@ -694,13 +723,37 @@ function App() {
         </motion.div>
 
         <div className="w-full max-w-sm space-y-4">
+          {authError && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-500 text-xs font-medium"
+            >
+              {authError}
+            </motion.div>
+          )}
           <button 
-            onClick={signInWithGoogle}
+            onClick={handleGoogleSignIn}
             className="w-full bg-white text-black font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
           >
             <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
             <span className="text-sm">Continue with Google</span>
           </button>
+          
+          <div className="flex items-center gap-4 py-2">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 text-[10px] uppercase font-bold tracking-widest">or</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
+          <button 
+            onClick={handleGuestSignIn}
+            className="w-full bg-gray-900 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-800 border border-white/10 transition-all active:scale-95"
+          >
+            <Users size={18} className="text-amber-500" />
+            <span className="text-sm">Sign in as Guest</span>
+          </button>
+
           <p className="text-[10px] text-gray-600 px-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
@@ -1384,27 +1437,34 @@ function App() {
               if (pkg && user.coins >= pkg.cost) {
                 try {
                   // Subtract coins
-                  const userRef = doc(db, 'users', user.id);
-                  await updateDoc(userRef, {
-                    coins: user.coins - pkg.cost
-                  });
+                  const { error: userError } = await supabase
+                    .from('public_profiles')
+                    .update({ coins: user.coins - pkg.cost })
+                    .eq('id', user.id);
+                  
+                  if (userError) throw userError;
 
                   // Create campaign
-                  const campaignRef = collection(db, 'campaigns');
-                  await addDoc(campaignRef, {
-                    userId: user.id,
-                    videoId,
-                    packageId,
-                    targetViews: pkg.views,
-                    currentViews: 0,
-                    status: 'active',
-                    createdAt: serverTimestamp()
-                  });
+                  const { error: campaignError } = await supabase
+                    .from('ad_campaigns')
+                    .insert({
+                      user_id: user.id,
+                      video_id: videoId,
+                      package_id: packageId,
+                      target_views: pkg.views,
+                      current_views: 0,
+                      status: 'active',
+                      created_at: new Date().toISOString()
+                    });
+
+                  if (campaignError) throw campaignError;
 
                   setSelectedAdVideoId(null);
-                  alert('Campaign launched successfully!');
+                  // Use a non-blocking notification if possible, but alert is okay for now if it's just a quick fix
+                  // Actually, let's just use console.log or a state for success
+                  console.log('Campaign launched successfully!');
                 } catch (error) {
-                  handleFirestoreError(error, OperationType.WRITE, 'campaigns');
+                  handleSupabaseError(error, OperationType.WRITE, 'ad_campaigns');
                 }
               }
             }} 

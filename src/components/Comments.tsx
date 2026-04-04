@@ -91,7 +91,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onDelete, onReply })
           </div>
         </div>
         {comment.replyTo && (
-          <div className="bg-white/5 px-2 py-1 rounded text-[10px] text-gray-500 mb-1 border-l border-purple-500">
+          <div className="bg-white/5 px-2 py-1 rounded text-[10px] text-gray-500 mb-1 border-l border-amber-500">
             Replying to {comment.replyTo.user}: {comment.replyTo.text}
           </div>
         )}
@@ -210,9 +210,9 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0 }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 z-[200] bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 min-w-[200px]"
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-[200] bg-black/60 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 min-w-[200px]"
           >
-            <Bell size={16} className="text-purple-500" />
+            <Bell size={16} className="text-amber-500" />
             <span className="text-white text-[10px] font-bold">{notification}</span>
           </motion.div>
         )}
@@ -248,10 +248,10 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
         ))}
       </div>
 
-      <div className={`mt-auto pt-4 ${isSidebar ? 'border-t border-[#9298a6] pb-2' : 'border-t border-[#9298a6]'} relative`}>
+      <div className={`mt-auto pt-4 ${isSidebar ? 'border-t border-white/10 pb-2' : 'border-t border-white/10'} relative`}>
         {/* Reply Indicator */}
         {replyingTo && (
-          <div className="mb-2 flex items-center justify-between bg-white/5 p-2 rounded-lg border-l-2 border-purple-500">
+          <div className="mb-2 flex items-center justify-between bg-white/5 p-2 rounded-lg border-l-2 border-amber-500">
             <div className="flex items-center gap-2 text-[10px] text-gray-400">
               <Reply size={12} />
               <span>Replying to <span className="text-white font-bold">{replyingTo.user}</span></span>
@@ -267,7 +267,7 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="absolute bottom-full left-0 mb-2 p-2 bg-gray-800 rounded-xl border border-[#9298a6] grid grid-cols-5 gap-2 z-50"
+              className="absolute bottom-full left-0 mb-2 p-2 bg-gray-900/95 backdrop-blur-xl rounded-xl border border-white/10 grid grid-cols-5 gap-2 z-50 shadow-2xl"
             >
               {EMOJIS.map(emoji => (
                 <button 
@@ -289,7 +289,7 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="absolute bottom-full left-0 mb-2 p-3 bg-gray-800 rounded-xl border border-[#9298a6] flex gap-2 z-50 overflow-x-auto max-w-[250px] scrollbar-hide"
+              className="absolute bottom-full left-0 mb-2 p-3 bg-gray-900/95 backdrop-blur-xl rounded-xl border border-white/10 flex gap-2 z-50 overflow-x-auto max-w-[250px] scrollbar-hide shadow-2xl"
             >
               {GIFS.map((gif, i) => (
                 <button 
@@ -305,10 +305,10 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
         </AnimatePresence>
 
         <div className="flex gap-2">
-          <div className="flex-1 bg-white/5 border border-[#9298a6] rounded-xl flex items-center px-3 gap-2 focus-within:border-purple-500 transition-colors">
+          <div className="flex-1 bg-white/5 border border-white/10 rounded-xl flex items-center px-3 gap-2 focus-within:border-amber-500/50 transition-colors">
             <button 
               onClick={() => setShowGifPicker(!showGifPicker)}
-              className={`text-gray-500 hover:text-white ${showGifPicker ? 'text-purple-500' : ''}`}
+              className={`text-gray-500 hover:text-white transition-colors ${showGifPicker ? 'text-amber-500' : ''}`}
             >
               <Gift size={20} />
             </button>
@@ -317,18 +317,18 @@ export const Comments: React.FC<CommentsProps> = ({ onClose, isSidebar }) => {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 bg-transparent py-3 text-white text-sm focus:outline-none"
+              className="flex-1 bg-transparent py-3 text-white text-sm focus:outline-none placeholder:text-gray-600"
             />
             <button 
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`text-gray-500 hover:text-white ${showEmojiPicker ? 'text-purple-500' : ''}`}
+              className={`text-gray-500 hover:text-white transition-colors ${showEmojiPicker ? 'text-amber-500' : ''}`}
             >
               <Smile size={20} />
             </button>
           </div>
           <button 
             onClick={() => handleSendComment()}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center text-white transition-colors shrink-0 ${commentText.trim() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-white/5 text-gray-600'}`}
+            className={`w-12 h-12 rounded-xl flex items-center justify-center text-black transition-all active:scale-95 shrink-0 font-bold ${commentText.trim() ? 'bg-amber-500 hover:bg-amber-400' : 'bg-white/5 text-gray-600'}`}
           >
             <Send size={20} />
           </button>

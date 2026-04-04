@@ -19,9 +19,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
   ];
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 h-16 bg-black/80 backdrop-blur-xl border border-[#9298a6] rounded-full flex items-center justify-around px-4 z-50 w-[95%] max-w-lg shadow-2xl shadow-black/50">
+    <div className="fixed bottom-0 left-0 right-0 h-16 border-t border-gray-800 bg-black flex justify-around items-center z-50">
       {navItems.map((item) => {
         const isActive = currentView === item.view;
+        const isCreate = item.view === 'create';
         
         return (
           <button
@@ -29,18 +30,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
             onClick={() => onViewChange(item.view)}
             className="relative flex flex-col items-center justify-center group gap-0.5"
           >
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isActive 
-                ? 'bg-amber-500/30 text-amber-500 scale-110 shadow-lg shadow-amber-500/20' 
-                : 'bg-white/10 text-amber-500/40 hover:bg-white/20 hover:text-amber-500'
+            <div className={`transition-all duration-300 ${
+              isCreate 
+                ? 'bg-white text-black rounded-lg p-1 scale-110 shadow-lg'
+                : isActive 
+                  ? 'w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 scale-110 shadow-lg shadow-amber-500/10 border border-amber-500/20' 
+                  : 'w-10 h-10 text-gray-500 hover:text-gray-300'
             }`}>
-              {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
+              {React.cloneElement(item.icon as React.ReactElement, { size: isCreate ? 24 : 20 })}
             </div>
-            <span className={`text-[8px] font-bold transition-all duration-300 ${
-              isActive ? 'text-amber-500 opacity-100' : 'text-amber-500/40 opacity-60'
-            }`}>
-              {item.label}
-            </span>
+            {!isCreate && (
+              <span className={`text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
+                isActive ? 'text-amber-500 opacity-100' : 'text-gray-500 opacity-60'
+              }`}>
+                {item.label}
+              </span>
+            )}
           </button>
         );
       })}

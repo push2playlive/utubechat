@@ -39,6 +39,16 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [chats, setChats] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user.id || null);
+    };
+    getUser();
+  }, []);
+
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +63,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   // Sync Chats
   useEffect(() => {
-    if (!supabase.auth.getSession()) return;
-
     const fetchChats = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -618,7 +626,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                   messages.map((msg) => (
                   <div 
                     key={msg.id} 
-                    className={`flex flex-col group ${msg.senderId === supabase.auth.getSession()?.data.session?.user.id ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col group ${msg.senderId === currentUserId ? 'items-end' : 'items-start'}`}
                   >
                     {msg.replyTo && (
                       <div className="bg-white/5 px-3 py-1 rounded-t-lg text-[10px] text-gray-500 mb-[-4px] border-l-2 border-pink-500 max-w-[70%] truncate">
@@ -627,7 +635,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     )}
                     <div className="flex items-center gap-2 max-w-[85%]">
                       {/* Message Tools - Always visible on hover, but also add a small indicator */}
-                      {msg.senderId === supabase.auth.getSession()?.data.session?.user.id && (
+                      {msg.senderId === currentUserId && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 rounded-full px-2 py-1 shadow-xl border border-white/20 ml-2">
                           <button 
                             onClick={() => setReplyingTo(msg)} 
@@ -666,7 +674,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                           </button>
                         </div>
                       )}
-                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === supabase.auth.getSession()?.data.session?.user.id ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === currentUserId ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                         {msg.type === 'gif' ? (
                           <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" referrerPolicy="no-referrer" />
                         ) : msg.type === 'image' ? (
@@ -683,7 +691,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                           </div>
                         )}
                       </div>
-                      {msg.senderId !== supabase.auth.getSession()?.data.session?.user.id && (
+                      {msg.senderId !== currentUserId && (
                         <div className="flex items-center gap-2 transition-opacity bg-black/60 rounded-full px-3 py-1.5 shadow-lg border border-white/10">
                           <button onClick={() => setReplyingTo(msg)} className="text-gray-300 hover:text-white p-1 transition-colors" title="Reply"><Reply size={18} /></button>
                         </div>
@@ -693,7 +701,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                       <span className="text-[8px] text-gray-600 uppercase tracking-widest">
                         {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                       </span>
-                      {msg.senderId === supabase.auth.getSession()?.data.session?.user.id && (
+                      {msg.senderId === currentUserId && (
                         <span className="text-[8px] text-pink-500 font-bold">
                           {msg.isRead ? 'Read' : 'Sent'}
                         </span>

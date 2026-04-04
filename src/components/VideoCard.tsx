@@ -298,17 +298,19 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       )}
 
       {/* Progress Bar */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20 z-20 cursor-pointer group/progress"
-        onClick={handleProgressClick}
-      >
+      {!isFullscreen && (
         <div 
-          className="h-full bg-amber-500 transition-all duration-100 ease-linear relative"
-          style={{ width: `${progress}%` }}
+          className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/10 z-40 cursor-pointer group/progress"
+          onClick={handleProgressClick}
         >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full scale-0 group-hover/progress:scale-100 transition-transform shadow-lg" />
+          <motion.div 
+            className="h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)] relative"
+            style={{ width: `${progress}%` }}
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-500 rounded-full scale-0 group-hover/progress:scale-100 transition-transform shadow-lg border border-white/20" />
+          </motion.div>
         </div>
-      </div>
+      )}
 
       {/* Fullscreen Exit Button */}
       <AnimatePresence>
@@ -358,24 +360,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
       {/* Right Sidebar Actions */}
       {!isFullscreen && (
-        <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4 z-30">
-          {/* Minimize Button */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onMiniPlayer?.(video);
-            }}
-            className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 border border-white/10 mb-1"
-            title="Minimize to Mini Player"
-          >
-            <Minimize2 size={22} />
-          </button>
-
+        <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-30">
           {/* Profile */}
           <div className="relative mb-2 group">
-            <div className="w-12 h-12 rounded-full border-2 border-white/40 overflow-hidden bg-gray-800 shadow-xl transition-transform group-hover:scale-105">
+            <div className="w-12 h-12 rounded-full border-2 border-white/40 overflow-hidden bg-gray-800 shadow-xl transition-transform group-hover:scale-110 cursor-pointer">
               <img 
-                src={`https://picsum.photos/seed/${video.author}/100/100`} 
+                src={video.authorPhoto || `https://picsum.photos/seed/${video.authorId}/100/100`} 
                 alt={video.author}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -388,7 +378,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
                   onClick={toggleFollow}
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-500 rounded-full p-1 text-black shadow-lg hover:scale-110 transition-transform"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-500 rounded-full p-1 text-black shadow-lg hover:scale-125 transition-transform"
                 >
                   <Plus size={14} strokeWidth={4} />
                 </motion.button>
@@ -400,44 +390,55 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           <div className="flex flex-col items-center group">
             <button 
               onClick={(e) => { e.stopPropagation(); toggleLike(); }}
-              className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center transition-all active:scale-125 hover:bg-white/20 border border-white/10"
+              className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-125 hover:bg-white/10 border border-white/10"
             >
               <Heart 
-                size={26} 
+                size={28} 
                 fill={isLiked ? "#ef4444" : "none"} 
                 className={isLiked ? "text-red-500" : "text-white"} 
               />
             </button>
-            <span className="text-white text-xs font-bold mt-1.5 drop-shadow-lg">{formatNumber(likes)}</span>
+            <span className="text-white text-[11px] font-black mt-1.5 drop-shadow-lg uppercase tracking-tighter">{formatNumber(likes)}</span>
           </div>
 
           {/* Comment */}
           <div className="flex flex-col items-center group">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowComments(true); onCommentClick?.(); }}
-              className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center transition-all active:scale-125 hover:bg-white/20 border border-white/10"
+              className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-125 hover:bg-white/10 border border-white/10"
             >
-              <MessageCircle size={26} className="text-white" />
+              <MessageCircle size={28} className="text-white" />
             </button>
-            <span className="text-white text-xs font-bold mt-1.5 drop-shadow-lg">{formatNumber(video.comments)}</span>
+            <span className="text-white text-[11px] font-black mt-1.5 drop-shadow-lg uppercase tracking-tighter">{formatNumber(video.comments)}</span>
+          </div>
+
+          {/* TokCoin / Promote - Primary Action */}
+          <div className="flex flex-col items-center group">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onPromoteClick?.(video.id); }}
+              className="w-12 h-12 rounded-full bg-amber-500/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-125 hover:bg-amber-500/40 border border-amber-500/30 group-hover:border-amber-500"
+            >
+              <Megaphone size={24} className="text-amber-500" />
+            </button>
+            <span className="text-amber-500 text-[10px] font-black mt-1.5 drop-shadow-lg uppercase tracking-widest">Promote</span>
           </div>
 
           {/* Share */}
           <div className="flex flex-col items-center group">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
-              className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center transition-all active:scale-125 hover:bg-white/20 border border-white/10"
+              className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-125 hover:bg-white/10 border border-white/10"
             >
-              <Share2 size={26} className="text-white" />
+              <Share2 size={28} className="text-white" />
             </button>
-            <span className="text-white text-xs font-bold mt-1.5 drop-shadow-lg">{formatNumber(video.shares)}</span>
+            <span className="text-white text-[11px] font-black mt-1.5 drop-shadow-lg uppercase tracking-tighter">{formatNumber(video.shares)}</span>
           </div>
 
           {/* More Menu (4 Dots) */}
           <div className="flex flex-col items-center relative">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowMoreMenu(!showMoreMenu); }}
-              className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-lg transition-all active:scale-110 border border-white/20 ${showMoreMenu ? 'bg-amber-500 text-black border-amber-500' : 'bg-white/10 text-white'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-110 border border-white/20 ${showMoreMenu ? 'bg-amber-500 text-black border-amber-500' : 'bg-black/20 text-white hover:bg-white/10'}`}
             >
               <MoreHorizontal size={24} />
             </button>
@@ -448,16 +449,16 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                   initial={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
                   animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
-                  className="absolute bottom-14 right-0 w-48 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-50 overflow-hidden"
+                  className="absolute bottom-14 right-0 w-52 bg-black/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-50 overflow-hidden"
                 >
                   <div className="flex flex-col gap-1">
                     <button 
                       onClick={(e) => { e.stopPropagation(); setIsAutoScrollEnabled(!isAutoScrollEnabled); }}
-                      className={`flex items-center justify-between p-2.5 rounded-xl transition-colors ${isAutoScrollEnabled ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10 text-gray-200'}`}
+                      className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isAutoScrollEnabled ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10 text-gray-200'}`}
                     >
                       <div className="flex items-center gap-3">
                         <ChevronDown size={18} />
-                        <span className="text-sm font-semibold">Auto Scroll</span>
+                        <span className="text-sm font-bold">Auto Scroll</span>
                       </div>
                       <div className={`w-8 h-4 rounded-full relative transition-colors ${isAutoScrollEnabled ? 'bg-amber-500' : 'bg-gray-700'}`}>
                         <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoScrollEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
@@ -474,53 +475,53 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                         }); 
                         setShowMoreMenu(false); 
                       }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
                     >
                       <Mail size={18} />
-                      <span className="text-sm font-semibold">Chat</span>
+                      <span className="text-sm font-bold">Direct Message</span>
                     </button>
 
                     <button 
                       onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); setShowMoreMenu(false); }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
                     >
                       <Maximize2 size={18} />
-                      <span className="text-sm font-semibold">Fullscreen</span>
+                      <span className="text-sm font-bold">Fullscreen</span>
+                    </button>
+
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onMiniPlayer?.(video); setShowMoreMenu(false); }}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
+                    >
+                      <Minimize2 size={18} />
+                      <span className="text-sm font-bold">Mini Player</span>
                     </button>
 
                     <button 
                       onClick={(e) => { e.stopPropagation(); setIsBookmarked(!isBookmarked); }}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${isBookmarked ? 'text-amber-500' : 'hover:bg-white/10 text-gray-200'}`}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${isBookmarked ? 'text-amber-500' : 'hover:bg-white/10 text-gray-200'}`}
                     >
                       <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
-                      <span className="text-sm font-semibold">{isBookmarked ? 'Saved' : 'Save'}</span>
+                      <span className="text-sm font-bold">{isBookmarked ? 'Saved' : 'Save Video'}</span>
                     </button>
 
                     <button 
                       onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
                     >
                       {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                      <span className="text-sm font-semibold">{isMuted ? 'Muted' : 'Sound On'}</span>
+                      <span className="text-sm font-bold">{isMuted ? 'Unmute' : 'Mute'}</span>
                     </button>
 
                     <button 
                       onClick={cyclePlaybackRate}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-white/10 text-gray-200 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <Play size={18} />
-                        <span className="text-sm font-semibold">Speed</span>
+                        <span className="text-sm font-bold">Playback Speed</span>
                       </div>
-                      <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-md">{playbackRate}x</span>
-                    </button>
-
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onPromoteClick?.(video.id); setShowMoreMenu(false); }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-amber-500/20 text-amber-500 transition-colors"
-                    >
-                      <Megaphone size={18} />
-                      <span className="text-sm font-semibold">Promote</span>
+                      <span className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-md">{playbackRate}x</span>
                     </button>
                   </div>
                 </motion.div>
@@ -569,35 +570,40 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
       {/* Bottom Info Overlay */}
       {!isFullscreen && (
-        <div className="absolute bottom-6 left-4 right-20 z-20 pointer-events-none">
-          <div className="pointer-events-auto max-w-[320px]">
-            <div className="flex items-center gap-3 mb-3">
+        <div className="absolute bottom-20 left-4 z-10 max-w-[70%] text-white pointer-events-none">
+          <div className="pointer-events-auto">
+            {/* Author Info */}
+            <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-xl text-white drop-shadow-xl tracking-tight">@{video.author}</h3>
-                <CheckCircle size={16} className="text-blue-400 fill-blue-400/20" />
+                <h3 className="font-bold text-lg text-white drop-shadow-2xl tracking-tight">@{video.author}</h3>
+                <CheckCircle size={18} className="text-blue-400 fill-blue-400/20" />
               </div>
               <button 
                 onClick={toggleFollow}
-                className={`px-4 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] transition-all active:scale-95 shadow-xl ${
                   isFollowed 
-                    ? 'bg-white/10 text-white border border-white/20' 
-                    : 'bg-white text-black shadow-2xl hover:bg-gray-100'
+                    ? 'bg-white/10 text-white border border-white/20 backdrop-blur-md' 
+                    : 'bg-white text-black hover:bg-gray-100'
                 }`}
               >
                 {isFollowed ? 'Following' : 'Follow'}
               </button>
             </div>
-            <p className="text-[15px] text-white/95 line-clamp-2 mb-4 drop-shadow-lg leading-relaxed font-medium">
+
+            {/* Caption / Description */}
+            <p className="text-sm opacity-90 line-clamp-3 mb-5 drop-shadow-lg leading-relaxed font-semibold tracking-tight">
               {video.description}
             </p>
-            <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl w-fit border border-white/10 group cursor-pointer hover:bg-white/20 transition-colors">
-              <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center gap-[1px]">
-                <div className="w-[2px] bg-black animate-equalizer" style={{ animationDelay: '0s' }} />
-                <div className="w-[2px] bg-black animate-equalizer" style={{ animationDelay: '0.2s' }} />
-                <div className="w-[2px] bg-black animate-equalizer" style={{ animationDelay: '0.4s' }} />
+
+            {/* Music Marquee */}
+            <div className="flex items-center gap-3 bg-black/30 backdrop-blur-xl px-4 py-2 rounded-2xl w-fit border border-white/10 group cursor-pointer hover:bg-black/50 transition-all shadow-2xl">
+              <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center gap-[1.5px] shadow-lg shadow-amber-500/20">
+                <div className="w-[2.5px] bg-black animate-equalizer h-2" style={{ animationDelay: '0s' }} />
+                <div className="w-[2.5px] bg-black animate-equalizer h-3" style={{ animationDelay: '0.2s' }} />
+                <div className="w-[2.5px] bg-black animate-equalizer h-2" style={{ animationDelay: '0.4s' }} />
               </div>
-              <div className="overflow-hidden w-40">
-                <p className="text-xs font-bold text-white whitespace-nowrap animate-marquee">
+              <div className="overflow-hidden w-44">
+                <p className="text-[11px] font-black text-white whitespace-nowrap animate-marquee uppercase tracking-wider">
                   {video.song} • Original Sound
                 </p>
               </div>

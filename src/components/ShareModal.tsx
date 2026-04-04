@@ -61,59 +61,59 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, videoUr
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 bg-gray-900 rounded-t-3xl p-6 z-[210] max-w-lg mx-auto"
+            className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-2xl rounded-t-[2.5rem] p-8 z-[210] max-w-lg mx-auto border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-white font-bold text-xl">Share to</h3>
-              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-white font-black text-2xl tracking-tight">Share to</h3>
+              <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all">
                 <X size={24} />
               </button>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide">
+            <div className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide -mx-2 px-2">
               {shareOptions.map((option) => (
                 <button
                   key={option.name}
                   onClick={option.action}
-                  className="flex flex-col items-center gap-2 shrink-0 group"
+                  className="flex flex-col items-center gap-3 shrink-0 group"
                 >
-                  <div className={`w-14 h-14 ${option.color} rounded-full flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                  <div className={`w-16 h-16 ${option.color} rounded-2xl flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300`}>
                     {option.icon}
                   </div>
-                  <span className="text-gray-400 text-xs font-medium">{option.name}</span>
+                  <span className="text-gray-400 text-[11px] font-black uppercase tracking-wider">{option.name}</span>
                 </button>
               ))}
               <button
                 onClick={() => {}}
-                className="flex flex-col items-center gap-2 shrink-0 group"
+                className="flex flex-col items-center gap-3 shrink-0 group"
               >
-                <div className="w-14 h-14 bg-gray-800 rounded-full flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform border border-white/10">
+                <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-white/10">
                   <Globe size={24} />
                 </div>
-                <span className="text-gray-400 text-xs font-medium">Embed</span>
+                <span className="text-gray-400 text-[11px] font-black uppercase tracking-wider">Embed</span>
               </button>
             </div>
 
             <div className="space-y-4">
-              <p className="text-gray-400 text-sm font-medium">Copy link</p>
-              <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl p-1 pl-4">
-                <span className="flex-1 text-gray-300 text-sm truncate pr-2">{videoUrl}</span>
+              <p className="text-gray-500 text-[11px] font-black uppercase tracking-widest ml-1">Copy link</p>
+              <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-2xl p-1.5 pl-5 focus-within:border-amber-500/50 transition-colors shadow-inner">
+                <span className="flex-1 text-gray-300 text-sm truncate pr-2 font-medium">{videoUrl}</span>
                 <button
                   onClick={handleCopy}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg active:scale-95 ${
                     copied ? 'bg-green-500 text-white' : 'bg-amber-500 text-black hover:bg-amber-400'
                   }`}
                 >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? <Check size={16} strokeWidth={3} /> : <Copy size={16} strokeWidth={3} />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-white/5">
+            <div className="mt-10 pt-6 border-t border-white/5">
               <button
                 onClick={onClose}
-                className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors"
+                className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl transition-all active:scale-[0.98]"
               >
                 Cancel
               </button>

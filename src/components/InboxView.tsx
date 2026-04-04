@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, MessageSquare, User, ChevronRight, Heart, Bell, Settings, Filter, CheckCircle2, Trash2, MoreHorizontal, UserPlus } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, orderBy, onSnapshot, limit, getDocs, Timestamp, doc, deleteDoc } from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 
 interface InboxViewProps {
   onClose: () => void;
@@ -43,40 +42,67 @@ export function InboxView({ onClose, onOpenMessages, onOpenSettings }: InboxView
   const [chats, setChats] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user.id || null);
+    };
+    getUser();
+  }, []);
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      await deleteDoc(doc(db, 'chats', chatId));
-      // Optionally show a notification
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', chatId);
+      
+      if (error) throw error;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `chats/${chatId}`);
+      handleSupabaseError(error, OperationType.DELETE, `chats/${chatId}`);
     }
   };
 
-  // Fetch real chats from Firestore
+  // Fetch real chats from Supabase
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!currentUserId) return;
 
-    const q = query(
-      collection(db, 'chats'),
-      where('participants', 'array-contains', auth.currentUser.uid),
-      orderBy('lastMessageAt', 'desc')
-    );
+    const fetchChats = async () => {
+      const { data, error } = await supabase
+        .from('chats')
+        .select('*')
+        .contains('participants', [currentUserId])
+        .order('last_message_at', { ascending: false });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setChats(chatList);
+      if (error) {
+        handleSupabaseError(error, OperationType.GET, 'chats');
+      } else {
+        setChats(data || []);
+      }
       setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'chats');
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    fetchChats();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('public:chats')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chats',
+        filter: `participants=cs.{${currentUserId}}`
+      }, () => {
+        fetchChats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
 
   // Fetch notifications (mocked for now but could be real)
   useEffect(() => {
@@ -201,18 +227,18 @@ export function InboxView({ onClose, onOpenMessages, onOpenSettings }: InboxView
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="text-white font-bold text-sm">{chat.otherUserName || 'User'}</h4>
                         </div>
-                        <p className={`text-xs line-clamp-1 ${chat.unreadCounts?.[auth.currentUser?.uid || ''] > 0 ? 'text-white font-medium' : 'text-gray-500'}`}>
+                        <p className={`text-xs line-clamp-1 ${chat.unreadCounts?.[currentUserId || ''] > 0 ? 'text-white font-medium' : 'text-gray-500'}`}>
                           {chat.lastMessage}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <span className="text-[10px] text-gray-500">
-                          {chat.lastMessageAt instanceof Timestamp ? chat.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                          {chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                         </span>
                         <div className="flex items-center gap-2">
-                          {chat.unreadCounts?.[auth.currentUser?.uid || ''] > 0 && (
+                          {chat.unreadCounts?.[currentUserId || ''] > 0 && (
                             <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
-                              {chat.unreadCounts[auth.currentUser?.uid || '']}
+                              {chat.unreadCounts[currentUserId || '']}
                             </div>
                           )}
                           <button 

@@ -11,14 +11,40 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
 
 // Auth helper functions
 export const signInWithGoogle = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin,
-    },
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      if (error.message.includes('provider is not enabled')) {
+        throw new Error('Google Sign-In is not enabled in your Supabase project. Please enable it in Authentication > Providers > Google.');
+      }
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Sign in error:', error);
+    throw error;
+  }
+};
+
+export const signInAnonymously = async () => {
+  try {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      if (error.message.includes('provider is not enabled')) {
+        throw new Error('Anonymous Sign-In is not enabled in your Supabase project. Please enable it in Authentication > Providers > Anonymous.');
+      }
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Anonymous sign in error:', error);
+    throw error;
+  }
 };
 
 export const logout = async () => {

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Settings, Users, DollarSign, Globe, Save, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, TrendingUp, Eye, MessageSquare, Heart, Video } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { supabase, handleSupabaseError, OperationType } from '../supabase';
 import { TokCoin } from './TokCoin';
 
 interface AdminViewProps {
@@ -27,10 +26,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const configRef = doc(db, 'system', 'config');
-        const snap = await getDoc(configRef);
-        if (snap.exists()) {
-          setConfig(prev => ({ ...prev, ...snap.data() }));
+        const { data, error } = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', 'global')
+          .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        if (data) {
+          setConfig(prev => ({ ...prev, ...data.config }));
         }
       } catch (error) {
         console.error('Error fetching admin config:', error);
@@ -62,10 +66,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, limit(50));
-      const snap = await getDocs(q);
-      const usersList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const { data, error } = await supabase
+        .from('public_profiles')
+        .select('*')
+        .limit(50);
+      
+      if (error) throw error;
+      
+      const usersList = data.map(u => ({
+        id: u.id,
+        displayName: u.display_name,
+        photoURL: u.photo_url,
+        role: u.role || 'user',
+        coins: u.coins || 0
+      }));
       setUsers(usersList);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -76,26 +90,35 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, { role: newRole, updatedAt: serverTimestamp() });
+      const { error } = await supabase
+        .from('public_profiles')
+        .update({ role: newRole, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      
+      if (error) throw error;
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+      handleSupabaseError(error, OperationType.UPDATE, `public_profiles/${userId}`);
     }
   };
 
   const handleSaveConfig = async () => {
     setIsSaving(true);
     try {
-      const configRef = doc(db, 'system', 'config');
-      await setDoc(configRef, {
-        ...config,
-        updatedAt: serverTimestamp(),
-        updatedBy: auth.currentUser?.uid
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('system_config')
+        .upsert({
+          id: 'global',
+          config: config,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id
+        });
+      
+      if (error) throw error;
       alert('Configuration saved successfully!');
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'system/config');
+      handleSupabaseError(error, OperationType.WRITE, 'system_config');
     } finally {
       setIsSaving(false);
     }
