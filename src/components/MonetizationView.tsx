@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { X, DollarSign, TrendingUp, BarChart3, Globe, MessageCircle, Flame, Play, ArrowUpRight, CheckCircle, Coins, Sparkles } from 'lucide-react';
 import { PARTNER_SITES } from '../constants';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 
 interface MonetizationViewProps {
   onClose: () => void;
@@ -48,8 +48,8 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black">950</span>
               <div className="flex items-center gap-1">
-                <TokCoin size={20} />
-                <span className="text-lg font-bold opacity-70">TokCoins</span>
+                <UtubechatCoin size={20} />
+                <span className="text-lg font-bold opacity-70">utubechat Coins</span>
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2 bg-black/10 w-fit px-3 py-1 rounded-full">
@@ -89,7 +89,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div className="text-right">
-                          <div className="text-white font-black text-lg">{earning?.amount || 0} TC</div>
+                          <div className="text-white font-black text-lg">{earning?.amount || 0} UC</div>
                           <div className="text-green-400 text-[10px] font-bold flex items-center gap-1 justify-end">
                             <TrendingUp size={10} /> {earning?.growth || '0%'}
                           </div>
@@ -125,7 +125,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                     <span className={`text-sm ${item.done ? 'text-gray-500 line-through' : 'text-white'}`}>{item.task}</span>
                   </div>
                   <div className="flex items-center gap-1 text-yellow-500 font-bold text-xs">
-                    <TokCoin size={12} />
+                    <UtubechatCoin size={12} />
                     +{item.reward}
                   </div>
                 </div>
@@ -142,7 +142,7 @@ export const MonetizationView: React.FC<MonetizationViewProps> = ({ onClose }) =
                   <span className="text-[10px] font-bold">1</span>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Visit <strong>utubechat.com</strong> and engage with content. Every interaction is tracked via your TokID.
+                  Visit <strong>utubechat.com</strong> and engage with content. Every interaction is tracked via your utubechat ID.
                 </p>
               </div>
               <div className="flex items-start gap-3">

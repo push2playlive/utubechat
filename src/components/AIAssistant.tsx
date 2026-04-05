@@ -51,7 +51,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onClose }) => {
         },
         onerror: (err) => console.error("Live API Error:", err),
         onclose: () => setIsLive(false)
-      }, "You are a helpful AI assistant for TokCoin users. You can help them with content creation, earning coins, and navigating the app.");
+      }, "You are a helpful AI assistant for utubechat users. You can help them with content creation, earning utubechat Coins, and navigating the app.");
       
       sessionRef.current = session;
     } catch (err) {
@@ -241,7 +241,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ onClose }) => {
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center px-10">
             <Brain className="text-gray-800 mb-4" size={64} />
-            <p className="text-gray-500 text-sm">Ask me anything about TokCoin, or just have a chat!</p>
+            <p className="text-gray-500 text-sm">Ask me anything about utubechat, or just have a chat!</p>
           </div>
         )}
         {messages.map((msg, i) => (

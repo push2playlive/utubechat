@@ -14,12 +14,13 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveCl
       <div 
         className="pointer-events-auto cursor-pointer w-7 h-7 rounded-full bg-amber-500 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center" 
         onClick={onLiveClick}
-        style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png')` }}
+        style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png')` }}
       >
         <img 
-          src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png" 
-          alt="TokCoin Logo" 
+          src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+          alt="utubechat Logo" 
           className="w-full h-full object-cover"
+          style={{ filter: 'var(--logo-filter)' }}
           referrerPolicy="no-referrer"
           crossOrigin="anonymous"
           onError={(e) => {

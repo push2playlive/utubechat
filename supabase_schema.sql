@@ -1,4 +1,4 @@
--- Supabase Schema for TokCoin & Command Nexus
+-- Supabase Schema for utubechat & Command Nexus
 
 -- 1. Users Table (Core Profile)
 CREATE TABLE IF NOT EXISTS public.users (
@@ -95,6 +95,16 @@ CREATE TABLE IF NOT EXISTS public.missions (
     total INTEGER DEFAULT 1,
     completed BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 7.1 User Courses Table (For Ascension Logic)
+CREATE TABLE IF NOT EXISTS public.user_courses (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    course_title TEXT NOT NULL,
+    status TEXT DEFAULT 'enrolled' CHECK (status IN ('enrolled', 'in-progress', 'completed')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- 8. System Config Table
@@ -217,3 +227,25 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 6. Set Admin Role (Run this manually for your email)
 -- UPDATE public.users SET role = 'admin' WHERE email = 'findlaygary25@gmail.com';
 -- UPDATE public.public_profiles SET role = 'admin' WHERE id = (SELECT id FROM public.users WHERE email = 'findlaygary25@gmail.com');
+
+-- 7. Ascension Logic: Check Guru Eligibility
+CREATE OR REPLACE FUNCTION public.check_guru_eligibility(user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    join_date TIMESTAMP;
+    courses_completed INTEGER;
+BEGIN
+    -- 1. Check when they joined (using public.users table)
+    SELECT created_at INTO join_date FROM public.users WHERE id = user_id;
+    
+    -- 2. Check how many courses they bought/finished
+    SELECT count(*) INTO courses_completed FROM public.user_courses WHERE user_id = user_id AND status = 'completed';
+
+    -- 3. The Rule: Must be 6 months (180 days) AND 6 courses
+    IF (join_date <= NOW() - INTERVAL '6 months') AND (courses_completed >= 6) THEN
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -23,7 +23,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ type }) => {
     },
     {
       title: 'Push2Play: Live & Earn',
-      desc: 'Watch live events and earn TokCoins in real-time.',
+      desc: 'Watch live events and earn utubechat Coins in real-time.',
       cta: 'Watch Now',
       image: 'https://picsum.photos/seed/p2p/400/200',
       color: 'from-pink-600 to-purple-900'

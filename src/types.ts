@@ -22,6 +22,7 @@ export interface User {
   id: string;
   name: string;
   username: string;
+  email?: string;
   bio: string;
   coins: number;
   followers: number;
@@ -29,7 +30,10 @@ export interface User {
   likes: number;
   avatar: string;
   walletAddress?: string;
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'user' | 'starter' | 'guru' | 'guru-master-elite';
+  coursesCompleted?: number;
+  referralCredits?: number;
+  createdAt?: string;
 }
 
 export interface PartnerSite {

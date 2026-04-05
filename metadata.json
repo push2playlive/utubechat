@@ -1,6 +1,6 @@
 {
-  "name": "TokCoin: Social Earning Hub",
-  "description": "Earn TokCoins while supporting utubechat.com, voice2fire.com, and push2play.live. Powered by commandnexus.net backend. A social video platform where users profit from their engagement.",
+  "name": "utubechat: Social Earning Hub",
+  "description": "Earn utubechat Coins while supporting utubechat.com, voice2fire.com, and push2play.live. Powered by commandnexus.net backend. A social video platform where users profit from their engagement.",
   "requestFramePermissions": [
     "camera",
     "microphone"

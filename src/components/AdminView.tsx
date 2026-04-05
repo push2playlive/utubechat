@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Settings, Users, DollarSign, Globe, Save, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, TrendingUp, Eye, MessageSquare, Heart, Video } from 'lucide-react';
 import { supabase, handleSupabaseError, OperationType } from '../supabase';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 
 interface AdminViewProps {
   onClose: () => void;
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'stats' | 'crypto'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'stats' | 'crypto' | 'courses'>('settings');
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [config, setConfig] = useState({
@@ -158,6 +158,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
               { id: 'settings', label: 'General Settings', icon: Settings },
               { id: 'crypto', label: 'Crypto & Payments', icon: DollarSign },
               { id: 'users', label: 'User Management', icon: Users },
+              { id: 'courses', label: 'Course Vault', icon: CheckCircle2 },
               { id: 'stats', label: 'System Analytics', icon: TrendingUp },
             ].map((tab) => (
               <button
@@ -202,7 +203,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Min. Withdrawal (TokCoins)</label>
+                        <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Min. Withdrawal (utubechat Coins)</label>
                         <input 
                           type="number" 
                           value={config.minWithdrawal}
@@ -367,19 +368,22 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <select 
-                                  value={user.role || 'user'}
-                                  onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
-                                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                                >
-                                  <option value="user">User</option>
-                                  <option value="admin">Admin</option>
-                                  <option value="guest">Guest</option>
-                                </select>
+                                  <select 
+                                    value={user.role || 'user'}
+                                    onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                                    className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                  >
+                                    <option value="user">User</option>
+                                    <option value="starter">Starter</option>
+                                    <option value="guru">Guru</option>
+                                    <option value="guru-master-elite">Guru Master Elite</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="guest">Guest</option>
+                                  </select>
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                                  <TokCoin size={14} />
+                                  <UtubechatCoin size={14} />
                                   {user.coins || 0}
                                 </div>
                               </td>
@@ -396,6 +400,56 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
                   )}
                 </motion.div>
               )}
+              {activeTab === 'courses' && (
+                <motion.div
+                  key="courses"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <CheckCircle2 className="text-amber-500" size={20} />
+                      Course Management
+                    </h3>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-3xl p-8">
+                    <p className="text-gray-400 mb-6">Select a user to assign completed courses for ascension testing.</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {users.map(user => (
+                        <div key={user.id} className="bg-black/40 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                            <span className="text-white font-bold text-sm">{user.displayName}</span>
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase
+                                  .from('user_courses')
+                                  .insert([
+                                    { user_id: user.id, course_title: `Course ${Math.floor(Math.random() * 100)}`, status: 'completed', completed_at: new Date().toISOString() }
+                                  ]);
+                                if (error) throw error;
+                                alert('Course assigned and completed!');
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="px-3 py-1 bg-amber-500 text-black rounded-lg text-[10px] font-bold"
+                          >
+                            Add Completed Course
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {activeTab === 'stats' && (
                 <motion.div
                   key="stats"
@@ -408,7 +462,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onClose }) => {
                     {[
                       { label: 'Total Users', value: stats?.totalUsers, icon: Users, color: 'text-blue-500' },
                       { label: 'Active Users', value: stats?.activeUsers, icon: Globe, color: 'text-green-500' },
-                      { label: 'Total TokCoins', value: stats?.totalCoins.toLocaleString(), icon: TokCoin, color: 'text-amber-500' },
+                      { label: 'Total utubechat Coins', value: stats?.totalCoins.toLocaleString(), icon: UtubechatCoin, color: 'text-amber-500' },
                       { label: 'Total Revenue', value: `$${stats?.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500' },
                       { label: 'Total Videos', value: stats?.totalVideos.toLocaleString(), icon: Video, color: 'text-purple-500' },
                       { label: 'Total Messages', value: stats?.totalMessages.toLocaleString(), icon: MessageSquare, color: 'text-pink-500' },

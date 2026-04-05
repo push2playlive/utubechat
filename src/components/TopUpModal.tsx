@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Shield, Zap, TrendingUp, DollarSign } from 'lucide-react';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 
 interface TopUpModalProps {
   isOpen: boolean;
@@ -41,9 +41,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ isOpen, onClose, onPurch
             <div className="flex items-center justify-between mb-8 relative">
               <div>
                 <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                  Top Up <TokCoin size={28} />
+                  Top Up <UtubechatCoin size={28} />
                 </h2>
-                <p className="text-gray-400 text-xs mt-1">Get more TokCoins to boost your content</p>
+                <p className="text-gray-400 text-xs mt-1">Get more utubechat Coins to boost your content</p>
               </div>
               <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
                 <X size={24} />
@@ -68,7 +68,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ isOpen, onClose, onPurch
                   )}
                   
                   <div className="flex items-center gap-2 mb-3">
-                    <TokCoin size={20} />
+                    <UtubechatCoin size={20} />
                     <p className="text-xl font-black text-white">{tier.amount.toLocaleString()}</p>
                   </div>
                   
@@ -94,7 +94,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ isOpen, onClose, onPurch
               <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
                 <Shield className="text-amber-500 shrink-0" size={20} />
                 <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
-                  Your payment is secure and encrypted. TokCoins are added instantly to your balance after successful purchase.
+                  Your payment is secure and encrypted. utubechat Coins are added instantly to your balance after successful purchase.
                 </p>
               </div>
               

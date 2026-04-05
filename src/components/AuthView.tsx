@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, AtSign, ArrowRight, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, AtSign, ArrowRight, Loader2, Sparkles, ShieldCheck, X } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface AuthViewProps {
   onLogin: (user: UserType) => void;
+  onClose: () => void;
 }
 
-export function AuthView({ onLogin }: AuthViewProps) {
+export function AuthView({ onLogin, onClose }: AuthViewProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,12 +32,20 @@ export function AuthView({ onLogin }: AuthViewProps) {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || 'Server error occurred');
+      }
+
       if (!response.ok) throw new Error(data.error || 'Something went wrong');
 
       onLogin(data.user);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message + (isLogin ? '. If using Google, try opening the app in a new tab.' : ''));
     } finally {
       setIsLoading(false);
     }
@@ -55,18 +64,30 @@ export function AuthView({ onLogin }: AuthViewProps) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-gray-900/80 backdrop-blur-2xl border border-[#9298a6] rounded-[40px] p-8 shadow-2xl">
+        <div className="bg-gray-900/80 backdrop-blur-2xl border border-[#9298a6] rounded-[40px] p-8 shadow-2xl relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full text-gray-400 transition-colors"
+          >
+            <X size={24} />
+          </button>
           <div className="text-center mb-8">
             <motion.div 
               initial={{ rotate: -10 }}
               animate={{ rotate: 10 }}
               transition={{ repeat: Infinity, duration: 4, repeatType: "reverse" }}
-              className="w-20 h-20 bg-gradient-to-br from-pink-500 to-amber-500 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-pink-500/20"
+              className="w-20 h-20 bg-primary/20 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-primary/30"
             >
-              <Sparkles className="text-white" size={40} />
+              <img 
+                src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+                alt="utubechat Logo" 
+                className="w-full h-full object-cover"
+                style={{ filter: 'var(--logo-filter)' }}
+                referrerPolicy="no-referrer"
+              />
             </motion.div>
             <h1 className="text-3xl font-black text-white mb-2 tracking-tight">
-              {isLogin ? 'Welcome Back' : 'Join UtubeChat'}
+              {isLogin ? 'Welcome Back' : 'Join utubechat'}
             </h1>
             <p className="text-gray-400 text-sm font-medium">
               {isLogin ? 'Sign in to continue your journey' : 'Create an account to start earning'}
@@ -83,24 +104,24 @@ export function AuthView({ onLogin }: AuthViewProps) {
                   className="space-y-4"
                 >
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={20} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
                     <input
                       type="text"
                       placeholder="Full Name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required={!isLogin}
-                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-pink-500 transition-all placeholder:text-gray-600"
+                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
                     />
                   </div>
                   <div className="relative group">
-                    <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={20} />
+                    <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
                     <input
                       type="text"
                       placeholder="Username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-pink-500 transition-all placeholder:text-gray-600"
+                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
                     />
                   </div>
                 </motion.div>
@@ -108,26 +129,26 @@ export function AuthView({ onLogin }: AuthViewProps) {
             </AnimatePresence>
 
             <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={20} />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
               <input
                 type="email"
                 placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-pink-500 transition-all placeholder:text-gray-600"
+                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
               />
             </div>
 
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={20} />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
               <input
                 type="password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-pink-500 transition-all placeholder:text-gray-600"
+                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
               />
             </div>
 
@@ -145,7 +166,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-pink-500 to-amber-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-pink-500/20 hover:shadow-pink-500/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              className="w-full bg-primary text-black py-4 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" size={24} />

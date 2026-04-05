@@ -1,7 +1,14 @@
 @import "tailwindcss";
 
+:root {
+  --primary: #ef4444;
+  --primary-glow: rgba(239, 68, 68, 0.2);
+  --primary-rgb: 239, 68, 68;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: var(--primary);
 }
 
 @layer utilities {

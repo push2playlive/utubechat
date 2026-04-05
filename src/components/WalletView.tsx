@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowUpRight, ArrowDownLeft, RefreshCw, Coins, Wallet, ChevronRight, Info, Copy, Check, QrCode, ExternalLink, ShieldCheck } from 'lucide-react';
 import { User } from '../types';
 import { commandNexusService, CryptoAsset } from '../services/commandNexusService';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
+import { AscensionClock } from './AscensionClock';
 import { BrowserProvider } from 'ethers';
 
 interface WalletViewProps {
@@ -107,7 +108,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
   const handleWithdraw = () => {
     const amount = parseInt(withdrawAmount);
     if (amount > 0 && amount <= user.coins && withdrawAddress) {
-      alert(`Withdrawal request for ${amount} TokCoins to ${withdrawAddress} submitted!`);
+      alert(`Withdrawal request for ${amount} utubechat Coins to ${withdrawAddress} submitted!`);
       setIsWithdrawModalOpen(false);
       setWithdrawAmount('');
     }
@@ -128,7 +129,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Crypto Wallet</h1>
-              <p className="text-gray-500 text-xs">Manage your TokCoins & Assets</p>
+              <p className="text-gray-500 text-xs">Manage your utubechat Coins & Assets</p>
             </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white">
@@ -143,9 +144,9 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
             
             <div className="flex justify-between items-start mb-8">
               <div>
-                <p className="text-gray-500 text-xs font-medium mb-1">Total TokCoins</p>
+                <p className="text-gray-500 text-xs font-medium mb-1">Total utubechat Coins</p>
                 <div className="flex items-center gap-2">
-                  <TokCoin size={24} />
+                  <UtubechatCoin size={24} />
                   <span className="text-3xl font-bold text-white">{user.coins.toLocaleString()}</span>
                 </div>
               </div>
@@ -218,7 +219,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
             
             <div className="space-y-4 flex-1">
               <div className="bg-black/40 p-2 rounded-xl border border-[#9298a6]">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">From TokCoins</p>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">From utubechat Coins</p>
                 <input 
                   type="number" 
                   value={swapAmount}
@@ -256,6 +257,11 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
               Swap Now
             </button>
           </div>
+        </div>
+
+        {/* Ascension Clock Section */}
+        <div className="mb-8">
+          <AscensionClock user={user} />
         </div>
 
         {/* Assets List */}
@@ -327,14 +333,14 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
                 <X size={24} />
               </button>
 
-              <h2 className="text-xl font-bold text-white mb-1">Withdraw TokCoins</h2>
+              <h2 className="text-xl font-bold text-white mb-1">Withdraw utubechat Coins</h2>
               <p className="text-gray-500 text-xs mb-8">Convert your earnings to crypto</p>
 
               <div className="space-y-4 mb-8">
                 <div className="bg-black/40 p-3 rounded-xl border border-[#9298a6]">
                   <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Amount to Withdraw</p>
                   <div className="flex items-center gap-2">
-                    <TokCoin size={20} />
+                    <UtubechatCoin size={20} />
                     <input 
                       type="number" 
                       value={withdrawAmount}

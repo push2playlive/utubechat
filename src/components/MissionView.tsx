@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Heart, Coins, Users, Shield, Zap, Globe, MessageCircle, Flame, Play } from 'lucide-react';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 
 interface MissionViewProps {
   onClose: () => void;
@@ -50,17 +50,17 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
               </div>
               <h4 className="font-bold text-white">Partner Ecosystem</h4>
               <p className="text-xs text-gray-500">
-                Support <strong>utubechat.com</strong>, <strong>voice2fire.com</strong>, and <strong>push2play.live</strong> to earn TokCoins.
+                Support <strong>utubechat.com</strong>, <strong>voice2fire.com</strong>, and <strong>push2play.live</strong> to earn utubechat Coins.
               </p>
             </div>
 
             <div className="bg-white/5 p-6 rounded-2xl border border-[#9298a6] space-y-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">
-                <TokCoin size={20} />
+                <UtubechatCoin size={20} />
               </div>
               <h4 className="font-bold text-white">Direct Earnings</h4>
               <p className="text-xs text-gray-500">
-                Every like, share, and referral generates value that goes directly into your TokWallet.
+                Every like, share, and referral generates value that goes directly into your utubechat Wallet.
               </p>
             </div>
 
@@ -117,7 +117,7 @@ export const MissionView: React.FC<MissionViewProps> = ({ onClose }) => {
           <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-8 rounded-3xl text-center space-y-4">
             <h4 className="text-xl font-bold text-white">Ready to join the movement?</h4>
             <p className="text-white/80 text-sm">
-              Start engaging with content from our partners and watch your TokWallet grow.
+              Start engaging with content from our partners and watch your utubechat Wallet grow.
             </p>
             <button 
               onClick={onClose}

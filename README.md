@@ -1,13 +1,13 @@
-# TokCoin - Be Social. Get Paid.
+# utubechat - Be Social. Get Paid.
 
-TokCoin is a short-form video platform where users can create, share, and earn TokCoins for their engagement.
+utubechat is a short-form video platform where users can create, share, and earn utubechat Coins for their engagement.
 
 ## 🎨 Customization Guide
 
 ### 🖼️ Logo and Favicon
 To replace the default logo and favicon:
 1.  **Favicon**: Replace `public/favicon.ico` with your own icon file.
-2.  **App Logo (Desktop)**: In `src/App.tsx`, look for the `TokCoin Logo` section (around line 506). Update the `src` and `style.backgroundImage` URLs to point to your new logo.
+2.  **App Logo (Desktop)**: In `src/App.tsx`, look for the logo section. Update the `src` and `style.backgroundImage` URLs to point to your new logo.
 3.  **App Logo (Mobile)**: In `src/components/TopNav.tsx`, update the logo image source.
 
 ### 🌈 Main Colors
@@ -15,7 +15,7 @@ The application uses Tailwind CSS v4. You can find and modify the main colors in
 
 - **Background**: `black` (#000000) and `#050505` (Sidebar/Header).
 - **Primary Accent**: `amber-500` (#f59e0b) - Used for buttons, active states, and highlights.
-- **Secondary Accent**: `yellow-500` (#eab308) - Used for TokCoin icons and balance displays.
+- **Secondary Accent**: `yellow-500` (#eab308) - Used for utubechat Coin icons and balance displays.
 - **Borders**: `#9298a6` - The standardized border color used throughout the app.
 - **Text**: `white` (#FFFFFF) for primary text and `gray-400`/`gray-500` for secondary text.
 

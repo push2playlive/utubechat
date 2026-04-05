@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin } from 'lucide-react';
 import { supabase, handleSupabaseError, OperationType } from '../supabase';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 
 interface SettingsViewProps {
   onClose: () => void;
   user: any;
   onTopUp?: () => void;
   initialSubView?: SettingsSubView;
+  currentTheme?: string;
+  onThemeChange?: (theme: string) => void;
 }
 
 type SettingsSubView = 'main' | 'profile' | 'notifications' | 'security' | 'privacy' | 'payments' | 'privacy-policy' | 'blocked' | 'appearance' | 'language' | 'help' | 'about';
@@ -19,14 +21,14 @@ const SETTINGS_GROUPS = [
     items: [
       { id: 'profile', icon: <User size={20} className="text-blue-400" />, label: 'Edit Profile', value: 'Public' },
       { id: 'security', icon: <Shield size={20} className="text-green-400" />, label: 'Security', value: 'High' },
-      { id: 'payments', icon: <CreditCard size={20} className="text-purple-400" />, label: 'Payments & Payouts', value: 'TokCoin' },
+      { id: 'payments', icon: <CreditCard size={20} className="text-purple-400" />, label: 'Payments & Payouts', value: 'utubechat Coin' },
     ]
   },
   {
     title: 'Preferences',
     items: [
       { id: 'notifications', icon: <Bell size={20} className="text-orange-400" />, label: 'Notifications', value: 'All' },
-      { id: 'appearance', icon: <Moon size={20} className="text-indigo-400" />, label: 'Appearance', value: 'Dark' },
+      { id: 'appearance', icon: <Moon size={20} className="text-primary" />, label: 'Appearance', value: 'Theme' },
       { id: 'language', icon: <Globe size={20} className="text-cyan-400" />, label: 'Language', value: 'English' },
     ]
   },
@@ -42,19 +44,20 @@ const SETTINGS_GROUPS = [
     items: [
       { id: 'help', icon: <HelpCircle size={20} className="text-gray-400" />, label: 'Help Center', value: '' },
       { id: 'privacy-policy', icon: <Shield size={20} className="text-gray-400" />, label: 'Privacy Policy', value: '' },
-      { id: 'share', icon: <Share2 size={20} className="text-gray-400" />, label: 'Share TokCoin', value: '' },
+      { id: 'share', icon: <Share2 size={20} className="text-gray-400" />, label: 'Share utubechat', value: '' },
       { id: 'about', icon: <Smartphone size={20} className="text-gray-400" />, label: 'About', value: 'v1.2.4' },
     ]
   }
 ];
 
-export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }: SettingsViewProps) {
+export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', currentTheme = 'red', onThemeChange }: SettingsViewProps) {
   const [subView, setSubView] = useState<SettingsSubView>(initialSubView);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [blockedAccounts, setBlockedAccounts] = useState<any[]>([]);
   
   const [displayName, setDisplayName] = useState(user.name);
+  const [avatar, setAvatar] = useState(user.avatar);
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
@@ -107,6 +110,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
         .from('users')
         .update({
           display_name: displayName,
+          photo_url: avatar,
           email,
           phone,
           location,
@@ -117,6 +121,16 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
 
       if (error) throw error;
       
+      // Also update public profile
+      await supabase
+        .from('public_profiles')
+        .update({
+          display_name: displayName,
+          photo_url: avatar,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
@@ -124,6 +138,23 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (limit to 2MB for base64 storage)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatar(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUnblock = async (id: string) => {
@@ -194,7 +225,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
 
       <div className="text-center py-6">
         <p className="text-[10px] text-gray-600 uppercase tracking-widest">
-          TokCoin Social Earning Hub
+          utubechat Social Earning Hub
         </p>
         <p className="text-[10px] text-gray-700 mt-1">
           © 2026 push2play live
@@ -212,12 +243,18 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
     >
       <div className="flex flex-col items-center gap-4 py-6">
         <div className="relative">
-          <div className="w-24 h-24 rounded-3xl bg-gray-800 border-2 border-amber-500 overflow-hidden">
-            <img src="https://picsum.photos/seed/user/200/200" alt="Profile" className="w-full h-full object-cover" />
+          <div className="w-24 h-24 rounded-3xl bg-gray-800 border-2 border-amber-500 overflow-hidden shadow-xl">
+            <img src={avatar || `https://picsum.photos/seed/${user.id}/200/200`} alt="Profile" className="w-full h-full object-cover" />
           </div>
-          <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-amber-500 rounded-2xl flex items-center justify-center text-black shadow-lg border-4 border-black">
+          <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-amber-500 rounded-2xl flex items-center justify-center text-black shadow-lg border-4 border-black cursor-pointer hover:bg-amber-400 transition-colors">
             <Camera size={18} />
-          </button>
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleImageUpload}
+            />
+          </label>
         </div>
         <div className="text-center">
           <h4 className="text-white font-bold">{user.username}</h4>
@@ -290,7 +327,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
               className="bg-transparent text-white text-sm outline-none flex-1 font-mono" 
             />
           </div>
-          <p className="text-[10px] text-gray-600 ml-2 italic">Used for TokCoin withdrawals and rewards.</p>
+          <p className="text-[10px] text-gray-600 ml-2 italic">Used for utubechat Coin withdrawals and rewards.</p>
         </div>
       </div>
 
@@ -325,7 +362,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
           { label: 'SMS Alerts', desc: 'Critical security alerts only', enabled: true },
           { label: 'Direct Messages', desc: 'When someone chats with you', enabled: true },
           { label: 'New Followers', desc: 'When someone starts following', enabled: true },
-          { label: 'TokCoin Earnings', desc: 'Real-time earning alerts', enabled: true },
+          { label: 'utubechat Coin Earnings', desc: 'Real-time earning alerts', enabled: true },
         ].map((item, i) => (
           <div key={i} className="p-4 flex items-center justify-between border-b border-[#9298a6] last:border-0">
             <div>
@@ -337,6 +374,61 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
             </button>
           </div>
         ))}
+      </div>
+    </motion.div>
+  );
+
+  const renderAppearance = () => (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide"
+    >
+      <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6">
+        <h3 className="text-white font-bold mb-4">Theme Color</h3>
+        <p className="text-xs text-gray-500 mb-6">Choose a color for your logo and app highlights.</p>
+        
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { id: 'red', color: '#ef4444', name: 'Red' },
+            { id: 'blue', color: '#3b82f6', name: 'Blue' },
+            { id: 'green', color: '#22c55e', name: 'Green' },
+            { id: 'orange', color: '#f97316', name: 'Orange' },
+            { id: 'fuchsia', color: '#d946ef', name: 'Fuchsia' },
+            { id: 'cyan', color: '#06b6d4', name: 'Cyan' },
+            { id: 'yellow', color: '#eab308', name: 'Yellow' },
+            { id: 'amber', color: '#f59e0b', name: 'Amber' },
+          ].map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => onThemeChange?.(theme.id)}
+              className={`group flex flex-col items-center gap-2 p-2 rounded-2xl transition-all ${currentTheme === theme.id ? 'bg-white/10 ring-2 ring-primary' : 'hover:bg-white/5'}`}
+            >
+              <div 
+                className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center relative overflow-hidden"
+                style={{ backgroundColor: theme.color }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-white/20" />
+                {currentTheme === theme.id && <Check size={20} className="text-white relative z-10" />}
+              </div>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{theme.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6">
+        <h3 className="text-white font-bold mb-4">Preview</h3>
+        <div className="p-4 rounded-2xl bg-black/40 border border-primary/20 space-y-3">
+          <h4 className="text-primary font-black text-lg tracking-tight">utubechat</h4>
+          <p className="text-gray-400 text-xs leading-relaxed">
+            This is how your <span className="text-primary font-bold">highlighted text</span> and primary elements will look with the selected theme.
+          </p>
+          <button className="w-full py-3 bg-primary text-black font-bold rounded-xl text-sm">
+            Primary Button
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -413,9 +505,9 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
               <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
                 <CreditCard size={32} className="text-purple-400" />
               </div>
-              <h3 className="text-white font-bold mb-2">TokCoin Balance</h3>
+              <h3 className="text-white font-bold mb-2">utubechat Coin Balance</h3>
               <div className="flex items-center justify-center gap-2 mb-6">
-                <TokCoin size={24} />
+                <UtubechatCoin size={24} />
                 <p className="text-3xl font-bold text-amber-500">{user.coins.toLocaleString()}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -490,7 +582,8 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main' }
             )}
           </motion.div>
         )}
-        {['appearance', 'language', 'help', 'about'].includes(subView) && (
+        {subView === 'appearance' && renderAppearance()}
+        {['language', 'help', 'about'].includes(subView) && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 text-center text-gray-500 mt-20">
             <HelpCircle size={48} className="mx-auto mb-4 opacity-20" />
             <p className="text-sm">This section is coming soon.</p>

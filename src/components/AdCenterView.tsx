@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Megaphone, TrendingUp, Users, Eye, DollarSign, Plus, ChevronRight, BarChart2, Zap, Target, Globe, Shield, Info, ArrowRight, Play, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { User, Video } from '../types';
-import { TokCoin } from './TokCoin';
+import { UtubechatCoin } from './UtubechatCoin';
 import { TopUpModal } from './TopUpModal';
 import { supabase, handleSupabaseError, OperationType } from '../supabase';
 
@@ -127,11 +127,11 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
           </div>
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-              <TokCoin size={24} />
+              <UtubechatCoin size={24} />
             </div>
             <div>
               <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Balance</p>
-              <p className="text-xl font-black text-white">{user.coins} <span className="text-amber-500 text-sm">TokCoins</span></p>
+              <p className="text-xl font-black text-white">{user.coins} <span className="text-amber-500 text-sm">utubechat Coins</span></p>
             </div>
             <button 
               onClick={() => setShowTopUp(true)}
@@ -314,7 +314,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                       <div className="pt-4 border-t border-white/10 flex items-center justify-between">
                         <div>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Cost</p>
-                          <p className="text-lg font-black text-white">{pkg.cost} <span className="text-xs text-amber-500">TC</span></p>
+                          <p className="text-lg font-black text-white">{pkg.cost} <span className="text-xs text-amber-500">UC</span></p>
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Duration</p>
@@ -342,7 +342,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
                     <div className="flex items-center justify-center gap-8">
                       <div className="text-left">
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Total Cost</p>
-                        <p className="text-4xl font-black text-white">{AD_PACKAGES.find(p => p.id === selectedPackage)?.cost} <span className="text-lg text-amber-500">TokCoins</span></p>
+                        <p className="text-4xl font-black text-white">{AD_PACKAGES.find(p => p.id === selectedPackage)?.cost} <span className="text-lg text-amber-500">utubechat Coins</span></p>
                       </div>
                       <div className="w-px h-12 bg-white/10" />
                       <div className="text-left">
@@ -543,7 +543,7 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
         onClose={() => setShowTopUp(false)} 
         onPurchase={(amount) => {
           // In a real app, this would trigger a payment flow
-          console.log(`Purchasing ${amount} TokCoins`);
+          console.log(`Purchasing ${amount} utubechat Coins`);
           setShowTopUp(false);
         }} 
       />

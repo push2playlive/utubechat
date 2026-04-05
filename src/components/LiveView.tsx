@@ -10,7 +10,7 @@ export const LiveView: React.FC<LiveViewProps> = ({ onClose }) => {
   const [comments, setComments] = useState([
     { id: 1, user: 'Sarah', text: 'Love the energy! 🔥' },
     { id: 2, user: 'Mike', text: 'Where is this?' },
-    { id: 3, user: 'CryptoKing', text: 'TokCoin to the moon! 🚀' },
+    { id: 3, user: 'CryptoKing', text: 'utubechat to the moon! 🚀' },
   ]);
   const [newComment, setNewComment] = useState('');
   const [likes, setLikes] = useState(1240);

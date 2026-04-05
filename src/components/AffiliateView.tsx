@@ -11,7 +11,7 @@ interface AffiliateViewProps {
 export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) => {
   const [copied, setCopied] = useState(false);
 
-  const referralLink = `tokcoin.app/join/${user.username.replace('@', '')}`;
+  const referralLink = `utubechat.com/join/${user.username.replace('@', '')}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(referralLink);
@@ -70,7 +70,7 @@ export const AffiliateView: React.FC<AffiliateViewProps> = ({ user, onClose }) =
               {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
           </div>
-          <p className="text-[10px] text-gray-500">Share this link with your friends. When they sign up, you'll earn a percentage of their TokCoin purchases and activity!</p>
+          <p className="text-[10px] text-gray-500">Share this link with your friends. When they sign up, you'll earn a percentage of their utubechat Coin purchases and activity!</p>
         </div>
 
         {/* Tier System */}

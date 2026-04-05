@@ -31,7 +31,7 @@ const MOCK_NOTIFICATIONS = [
     type: 'earning',
     user: 'System',
     avatar: 'https://picsum.photos/seed/system/100/100',
-    content: 'You earned 25 TokCoins from Tier 2 referral',
+    content: 'You earned 25 utubechat Coins from Tier 2 referral',
     time: '1h ago',
   },
 ];

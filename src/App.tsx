@@ -20,11 +20,12 @@ import { Comments } from './components/Comments';
 import { DiscoverView } from './components/DiscoverView';
 import { AdCenterView } from './components/AdCenterView';
 import { AdminView } from './components/AdminView';
-import { TokCoin } from './components/TokCoin';
+import { UtubechatCoin } from './components/UtubechatCoin';
 import { TopUpModal } from './components/TopUpModal';
+import { AuthView } from './components/AuthView';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield } from 'lucide-react';
+import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail } from 'lucide-react';
 import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType } from './supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -57,7 +58,12 @@ function App() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [selectedAdVideoId, setSelectedAdVideoId] = useState<string | null>(null);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
-  const [initialSettingsSubView, setInitialSettingsSubView] = useState<'main' | 'profile' | 'payments'>('main');
+  const [showAuthView, setShowAuthView] = useState(false);
+  const [initialSettingsSubView, setInitialSettingsSubView] = useState<'main' | 'profile' | 'payments' | 'appearance'>('main');
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    const saved = localStorage.getItem('utubechat_theme');
+    return saved || 'red';
+  });
   const [isPulling, setIsPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,26 +71,66 @@ function App() {
   
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Theme Effect
+  useEffect(() => {
+    const themes: Record<string, { color: string, rgb: string, filter: string }> = {
+      red: { color: '#ef4444', rgb: '239, 68, 68', filter: 'hue-rotate(0deg)' },
+      blue: { color: '#3b82f6', rgb: '59, 130, 246', filter: 'hue-rotate(220deg)' },
+      green: { color: '#22c55e', rgb: '34, 197, 94', filter: 'hue-rotate(120deg)' },
+      orange: { color: '#f97316', rgb: '249, 115, 22', filter: 'hue-rotate(30deg)' },
+      fuchsia: { color: '#d946ef', rgb: '217, 70, 239', filter: 'hue-rotate(300deg)' },
+      cyan: { color: '#06b6d4', rgb: '6, 182, 212', filter: 'hue-rotate(180deg)' },
+      yellow: { color: '#eab308', rgb: '234, 179, 8', filter: 'hue-rotate(60deg)' },
+      amber: { color: '#f59e0b', rgb: '245, 158, 11', filter: 'hue-rotate(45deg)' },
+    };
+
+    const theme = themes[currentTheme] || themes.red;
+    document.documentElement.style.setProperty('--primary', theme.color);
+    document.documentElement.style.setProperty('--primary-rgb', theme.rgb);
+    document.documentElement.style.setProperty('--primary-glow', `rgba(${theme.rgb}, 0.2)`);
+    document.documentElement.style.setProperty('--logo-filter', theme.filter);
+    localStorage.setItem('utubechat_theme', currentTheme);
+  }, [currentTheme]);
+
   const handleGoogleSignIn = async () => {
     try {
       setAuthError(null);
       await signInWithGoogle();
     } catch (error: any) {
-      setAuthError(error.message || 'Failed to sign in with Google');
+      setAuthError((error.message || 'Failed to sign in with Google') + '. Try opening the app in a new tab if this persists.');
     }
   };
 
   const handleGuestSignIn = async () => {
     try {
       setAuthError(null);
-      const data = await signInAnonymously();
+      const result = await signInAnonymously();
+      const data = (result as any).data;
+      const error = (result as any).error;
+      
+      if (error) throw error;
       if (data.user) {
-        setSupabaseUser(data.user);
-        syncUserProfile(data.user);
+        setSupabaseUser(data.user as any);
+        syncUserProfile(data.user as any);
       }
     } catch (error: any) {
       setAuthError(error.message || 'Failed to sign in as guest');
     }
+  };
+
+  const handleCustomLogin = (userData: User) => {
+    const mappedUser = {
+      id: userData.id,
+      email: userData.email,
+      user_metadata: { display_name: userData.name },
+      aud: 'authenticated',
+      role: 'authenticated',
+      created_at: new Date().toISOString(),
+      app_metadata: {},
+    } as any;
+    setSupabaseUser(mappedUser);
+    setUser(userData);
+    setShowAuthView(false);
   };
 
   // Supabase Auth Listener
@@ -97,13 +143,42 @@ function App() {
     window.addEventListener('nexus_tuning_mode', handleTuningMode);
     
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSupabaseUser(session?.user ?? null);
-      setIsAuthReady(true);
-      if (session?.user) {
-        syncUserProfile(session.user);
-      }
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSupabaseUser(session?.user ?? null);
+        setIsAuthReady(true);
+        if (session?.user) {
+          syncUserProfile(session.user);
+        }
+      })
+      .catch(err => {
+        console.error('Session check error:', err);
+        setIsAuthReady(true); // Still set ready so we can show sign in
+      });
+
+    // Check for custom server auth
+    fetch('/api/auth/me')
+      .then(async res => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.user) {
+          // Map custom user to SupabaseUser-like object
+          const mappedUser = {
+            id: data.user.id,
+            email: data.user.email,
+            user_metadata: { display_name: data.user.name },
+            aud: 'authenticated',
+            role: 'authenticated',
+            created_at: new Date().toISOString(),
+            app_metadata: {},
+          } as any;
+          setSupabaseUser(mappedUser);
+          setUser(data.user);
+        }
+      })
+      .catch(err => console.log('Not logged in via custom server or server not ready:', err));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const sUser = session?.user ?? null;
@@ -182,7 +257,14 @@ function App() {
             .eq('id', supabaseUser.id)
             .single();
 
-          if (error) throw error;
+          if (error) {
+            if (error.code === 'PGRST116') {
+              // User not found in Supabase, might be a custom server user or new user
+              console.log('User not found in Supabase, using local data');
+              return;
+            }
+            throw error;
+          }
           if (data) {
             // Fetch additional data from CommandNexus
             try {
@@ -201,8 +283,26 @@ function App() {
               followers: data.followers || 0,
               following: data.following || 0,
               likes: data.likes || 0,
-              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user')
+              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user'),
+              createdAt: data.created_at,
+              referralCredits: (data.referrals || 0) * 10,
+              coursesCompleted: 0 // Will fetch below
             });
+
+            // Fetch courses completed
+            try {
+              const { count, error: courseError } = await supabase
+                .from('user_courses')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', supabaseUser.id)
+                .eq('status', 'completed');
+              
+              if (!courseError) {
+                setUser(prev => ({ ...prev, coursesCompleted: count || 0 }));
+              }
+            } catch (err) {
+              console.warn('Could not fetch courses completed');
+            }
           }
         } catch (error) {
           handleSupabaseError(error, OperationType.GET, `users/${supabaseUser.id}`);
@@ -232,7 +332,8 @@ function App() {
               followers: data.followers || 0,
               following: data.following || 0,
               likes: data.likes || 0,
-              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user')
+              role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user'),
+              referralCredits: (data.referrals || 0) * 10
             }));
           }
         )
@@ -614,7 +715,7 @@ function App() {
         .update({ coins: (user.coins || 0) - amount })
         .eq('id', supabaseUser.id);
       
-      alert(`Successfully swapped ${amount} TokCoins for ${cryptoType}!`);
+      alert(`Successfully swapped ${amount} utubechat Coins for ${cryptoType}!`);
     } catch (error) {
       console.error('Failed to sync swap to Supabase:', error);
     }
@@ -718,7 +819,7 @@ function App() {
           <div className="w-24 h-24 bg-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-amber-500/20">
             <Zap size={48} className="text-black" />
           </div>
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tighter">TOKCOIN</h1>
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tighter">utubechat</h1>
           <p className="text-gray-400 text-sm uppercase tracking-widest">Be Social. Get Paid.</p>
         </motion.div>
 
@@ -754,10 +855,27 @@ function App() {
             <span className="text-sm">Sign in as Guest</span>
           </button>
 
+          <button 
+            onClick={() => setShowAuthView(true)}
+            className="w-full bg-gray-900 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-800 border border-white/10 transition-all active:scale-95"
+          >
+            <Mail size={18} className="text-blue-500" />
+            <span className="text-sm">Sign in with Email</span>
+          </button>
+
           <p className="text-[10px] text-gray-600 px-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>
+
+        <AnimatePresence>
+          {showAuthView && (
+            <AuthView 
+              onLogin={handleCustomLogin} 
+              onClose={() => setShowAuthView(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -934,8 +1052,8 @@ function App() {
         <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-[#9298a6] mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <TokCoin size={20} />
-              <span className="font-bold">TokCoins</span>
+              <UtubechatCoin size={20} />
+              <span className="font-bold">utubechat Coins</span>
             </div>
             <span className="text-yellow-500 font-bold">{user.coins.toLocaleString()}</span>
           </div>
@@ -971,7 +1089,7 @@ function App() {
   const renderShop = () => (
     <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">TokShop</h1>
+        <h1 className="text-2xl font-bold">utubechat Shop</h1>
         <button 
           onClick={() => setIsWalletOpen(true)}
           className="flex items-center gap-2 bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full text-xs font-bold border border-blue-500/30"
@@ -1226,7 +1344,7 @@ function App() {
                 <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-[#9298a6]">
                   <p className="text-yellow-500 text-xs font-bold mb-1 uppercase tracking-wider">Balance</p>
                   <div className="flex items-center gap-2">
-                    <TokCoin size={24} />
+                    <UtubechatCoin size={24} />
                     <span className="text-2xl font-bold text-white">{user.coins.toLocaleString()}</span>
                   </div>
                 </div>
@@ -1240,13 +1358,14 @@ function App() {
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-[#050505] border-b border-[#9298a6] z-[55] items-center px-6 justify-between">
         <div className="flex items-center gap-4">
           <div 
-            className="w-8 h-8 rounded-full bg-amber-500 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center"
-            style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png')` }}
+            className="w-8 h-8 rounded-full bg-primary/20 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center border border-primary/30"
+            style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png')`, backgroundBlendMode: 'overlay' }}
           >
             <img 
-              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png" 
-              alt="TokCoin Logo" 
+              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+              alt="utubechat Logo" 
               className="w-full h-full object-cover"
+              style={{ filter: 'var(--logo-filter)' }}
               referrerPolicy="no-referrer"
               crossOrigin="anonymous"
               onError={(e) => {
@@ -1254,7 +1373,7 @@ function App() {
               }}
             />
           </div>
-          <span className="text-white font-bold text-xl">TokCoin</span>
+          <span className="text-primary font-black text-xl tracking-tight">utubechat</span>
         </div>
 
         <div className="flex-1 max-w-2xl mx-12 relative">
@@ -1340,8 +1459,8 @@ function App() {
             exit={{ opacity: 0, y: -50 }}
             className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg"
           >
-            <TokCoin size={20} />
-            <span>+1 TokCoin earned!</span>
+            <UtubechatCoin size={20} />
+            <span>+1 utubechat Coin earned!</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1408,6 +1527,8 @@ function App() {
               user={user} 
               onTopUp={() => setIsTopUpModalOpen(true)}
               initialSubView={initialSettingsSubView}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
             />
           </div>
         )}
@@ -1571,6 +1692,9 @@ function App() {
         }} 
       />
 
+      <AnimatePresence>
+      </AnimatePresence>
+
       <BottomNav 
         currentView={currentView} 
         onViewChange={(view) => {
@@ -1670,8 +1794,8 @@ function App() {
             exit={{ y: -50, opacity: 0 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 z-[110] shadow-lg"
           >
-            <TokCoin size={18} />
-            <span>+5 TokCoins!</span>
+            <UtubechatCoin size={18} />
+            <span>+5 utubechat Coins!</span>
             <CheckCircle size={16} />
           </motion.div>
         )}

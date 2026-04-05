@@ -29,7 +29,7 @@ const MENTORS = [
     id: '3',
     name: 'Creative Mentor Leo',
     specialty: 'Content Optimization',
-    description: 'Helps you create viral content for voice2fire and TokCoin.',
+    description: 'Helps you create viral content for voice2fire and utubechat.',
     icon: <Sparkles className="text-purple-400" />,
     color: 'from-purple-500/20 to-pink-500/20',
     borderColor: 'border-purple-500/30'
@@ -82,7 +82,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
             <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 p-6 rounded-3xl border border-[#9298a6]">
               <h3 className="text-xl font-bold text-white mb-2">Meet Your Success Agents</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Our AI Mentors are here to help you navigate the TokCoin ecosystem. 
+                Our AI Mentors are here to help you navigate the utubechat ecosystem. 
                 Set targets, track progress, and get expert advice on scaling your affiliate network.
               </p>
             </div>
@@ -126,7 +126,7 @@ export function MentorsView({ onClose }: MentorsViewProps) {
                   <div className="flex-1">
                     <h4 className="text-white font-bold text-sm">Launch Your Own Platform</h4>
                     <p className="text-xs text-gray-400 mt-1 mb-3">
-                      Get a fully branded version of TokCoin for your community. 
+                      Get a fully branded version of utubechat for your community. 
                       Includes all 3 partner integrations and affiliate tracking.
                     </p>
                     <button className="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors">

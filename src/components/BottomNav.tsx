@@ -34,14 +34,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
               isCreate 
                 ? 'bg-white text-black rounded-lg p-1 scale-110 shadow-lg'
                 : isActive 
-                  ? 'w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 scale-110 shadow-lg shadow-amber-500/10 border border-amber-500/20' 
+                  ? 'w-10 h-10 rounded-2xl bg-primary/20 text-primary scale-110 shadow-lg shadow-primary/10 border border-primary/20' 
                   : 'w-10 h-10 text-gray-500 hover:text-gray-300'
             }`}>
               {React.cloneElement(item.icon as React.ReactElement, { size: isCreate ? 24 : 20 })}
             </div>
             {!isCreate && (
               <span className={`text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                isActive ? 'text-amber-500 opacity-100' : 'text-gray-500 opacity-60'
+                isActive ? 'text-primary opacity-100' : 'text-gray-500 opacity-60'
               }`}>
                 {item.label}
               </span>

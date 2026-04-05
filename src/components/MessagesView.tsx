@@ -448,7 +448,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                 <Bell size={20} className="text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-white text-xs font-bold">TokCoin Notification</p>
+                <p className="text-white text-xs font-bold">utubechat Notification</p>
                 <p className="text-gray-300 text-[10px]">{notification}</p>
               </div>
             </motion.div>
