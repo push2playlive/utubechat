@@ -130,16 +130,15 @@ export const MOCK_VIDEOS: Video[] = [
 ];
 
 export const CURRENT_USER: User = {
-  id: 'user_1',
-  name: 'John Doe',
-  username: '@johndoe',
-  bio: 'Just a guy who loves videos and crypto! 🚀',
-  coins: 1250,
-  followers: 1200,
-  following: 450,
-  likes: 5600,
-  avatar: 'https://picsum.photos/seed/johndoe/200/200',
-  walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+  id: 'guest_1',
+  name: 'Guest User',
+  username: '@guest',
+  bio: 'Welcome to utubechat! Sign in to start earning. 🚀',
+  coins: 0,
+  followers: 0,
+  following: 0,
+  likes: 0,
+  avatar: 'https://picsum.photos/seed/guest/200/200',
 };
 
 export const MOCK_USERS: User[] = [

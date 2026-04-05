@@ -1,7 +1,8 @@
 import React from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, UserPlus, CheckCircle, Megaphone } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, UserPlus, CheckCircle, Megaphone, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface VideoActionStackProps {
+  authorPhoto?: string;
   likes: number;
   comments: number;
   shares: number;
@@ -14,6 +15,8 @@ interface VideoActionStackProps {
   onShare: () => void;
   onBookmark: () => void;
   onMore: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
   onPromote?: () => void;
   formatNumber: (num: number) => string;
 }
@@ -25,8 +28,8 @@ const ActionButton = ({
   isActive = false, 
   isPromote = false,
   activeColor = "text-red-500",
-  activeBg = "bg-red-500/30",
-  activeBorder = "border-red-500/50"
+  activeBg = "bg-white/30",
+  activeBorder = "border-white/40"
 }: { 
   icon: React.ReactElement, 
   label: string, 
@@ -37,15 +40,15 @@ const ActionButton = ({
   activeBg?: string,
   activeBorder?: string
 }) => (
-  <div className="flex flex-col items-center gap-1.5 group cursor-pointer" onClick={onClick}>
+  <div className="flex flex-col items-center gap-1 group/btn cursor-pointer" onClick={onClick}>
     <div className={`
-      w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl transition-all duration-300
+      w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl transition-all duration-300 shadow-2xl
       ${isPromote 
-        ? 'bg-white/20 border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:bg-white hover:text-black' 
+        ? 'bg-white/20 border border-white/40 text-white hover:bg-white hover:text-black' 
         : isActive 
           ? `${activeBg} ${activeBorder} ${activeColor}` 
           : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}
-      group-hover:scale-110 group-active:scale-95
+      group-hover/btn:scale-110 group-active/btn:scale-95
     `}>
       {React.cloneElement(icon, { 
         size: 22, 
@@ -53,13 +56,14 @@ const ActionButton = ({
         fill: isActive ? "currentColor" : "none"
       })}
     </div>
-    <span className="text-[11px] font-black tracking-tight text-white drop-shadow-md opacity-80 group-hover:opacity-100 transition-opacity uppercase">
+    <span className="text-[11px] font-black tracking-tight text-white drop-shadow-md opacity-80 uppercase">
       {label}
     </span>
   </div>
 );
 
 const VideoActionStack: React.FC<VideoActionStackProps> = ({
+  authorPhoto,
   likes,
   comments,
   shares,
@@ -76,20 +80,18 @@ const VideoActionStack: React.FC<VideoActionStackProps> = ({
   formatNumber
 }) => {
   return (
-    <div className="absolute right-4 bottom-10 flex flex-col gap-6 items-center z-50 animate-in fade-in slide-in-from-right-4 duration-700">
-      {/* Profile - Direct and Clean */}
+    <div className="flex flex-col gap-5 items-center z-[100] animate-in fade-in slide-in-from-right-4 duration-500">
+      {/* Profile (Classic White) */}
       <div className="relative mb-2 group cursor-pointer" onClick={onFollow}>
-        <div className={`w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-2xl border transition-all duration-300 ${
-          isFollowed ? 'border-gray-400' : 'border-white/20 scale-110'
-        }`}>
-          {isFollowed ? (
-            <CheckCircle size={18} className="text-black" strokeWidth={3} />
+        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-2xl border-2 border-black/10 overflow-hidden transition-transform group-hover:scale-110">
+          {authorPhoto ? (
+            <img src={authorPhoto} alt="Author" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <UserPlus size={18} className="text-black" strokeWidth={3} />
           )}
         </div>
         {!isFollowed && (
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white text-black rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold border border-black shadow-md">+</div>
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-fuchsia-600 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold border border-black shadow-md">+</div>
         )}
       </div>
 
@@ -126,14 +128,14 @@ const VideoActionStack: React.FC<VideoActionStackProps> = ({
         label="Save" 
         onClick={(e) => { e.stopPropagation(); onBookmark(); }}
         isActive={isBookmarked}
-        activeColor="text-yellow-500"
-        activeBg="bg-yellow-500/30"
-        activeBorder="border-yellow-500/50"
+        activeColor="text-amber-500"
+        activeBg="bg-white/30"
+        activeBorder="border-white/40"
       />
       
       <button 
         onClick={(e) => { e.stopPropagation(); onMore(); }}
-        className="text-white/30 hover:text-white transition-colors duration-300"
+        className="text-white/30 hover:text-white transition-colors duration-300 mt-1"
       >
         <MoreHorizontal size={24} />
       </button>

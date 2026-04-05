@@ -37,22 +37,27 @@ async function startServer() {
   // Auth Routes
   app.post("/api/auth/signup", async (req, res) => {
     const { email, password, name, username } = req.body;
-    const users = getUsers();
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: "Email, password, and name are required" });
+    }
 
-    if (users.find((u: any) => u.email === email)) {
+    const users = getUsers();
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (users.find((u: any) => u.email.toLowerCase().trim() === normalizedEmail)) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
       id: Date.now().toString(),
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       name,
       username: username || `@${name.toLowerCase().replace(/\s+/g, "")}`,
-      role: email === ADMIN_EMAIL ? "admin" : "user",
+      role: normalizedEmail === ADMIN_EMAIL ? "admin" : "user",
       coins: 100, // Starting coins
-      avatar: `https://picsum.photos/seed/${email}/100/100`,
+      avatar: `https://picsum.photos/seed/${normalizedEmail}/100/100`,
       following: 0,
       followers: 0,
       likes: 0
@@ -75,11 +80,21 @@ async function startServer() {
 
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
-    const users = getUsers();
-    const user = users.find((u: any) => u.email === email);
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: "Invalid credentials" });
+    const users = getUsers();
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = users.find((u: any) => u.email.toLowerCase().trim() === normalizedEmail);
+
+    if (!user) {
+      return res.status(401).json({ error: "User not found. Please sign up first." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Incorrect password. Please try again." });
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });

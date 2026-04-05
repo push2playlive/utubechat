@@ -2,20 +2,34 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, AtSign, ArrowRight, Loader2, Sparkles, ShieldCheck, X } from 'lucide-react';
 import { User as UserType } from '../types';
+import { signInWithGoogle } from '../supabase';
 
 interface AuthViewProps {
   onLogin: (user: UserType) => void;
   onClose: () => void;
+  initialMode?: 'login' | 'signup';
 }
 
-export function AuthView({ onLogin, onClose }: AuthViewProps) {
-  const [isLogin, setIsLogin] = useState(true);
+export function AuthView({ onLogin, onClose, initialMode = 'login' }: AuthViewProps) {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await signInWithGoogle();
+    } catch (err: any) {
+      setError(err.message || 'Google Sign-In failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,97 +108,117 @@ export function AuthView({ onLogin, onClose }: AuthViewProps) {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <AnimatePresence mode="wait">
-              {!isLogin && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4"
+          <div className="space-y-4">
+            <button
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+              className="w-full bg-white text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+              Continue with Google
+            </button>
+
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-[#9298a6]/30"></div>
+              <span className="flex-shrink mx-4 text-gray-500 text-[10px] font-bold uppercase tracking-widest">or</span>
+              <div className="flex-grow border-t border-[#9298a6]/30"></div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <AnimatePresence mode="wait">
+                {!isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-4"
+                  >
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
+                      <input
+                        type="text"
+                        placeholder="Full Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required={!isLogin}
+                        className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
+                      />
+                    </div>
+                    <div className="relative group">
+                      <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
+                      <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
+                />
+              </div>
+
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
+                />
+              </div>
+
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-sm font-medium flex items-center gap-3"
                 >
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Full Name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required={!isLogin}
-                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
-                    />
-                  </div>
-                  <div className="relative group">
-                    <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
-                    />
-                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                  {error}
                 </motion.div>
               )}
-            </AnimatePresence>
 
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
-              />
-            </div>
-
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={20} />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-black/40 border border-[#9298a6] rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-primary transition-all placeholder:text-gray-600"
-              />
-            </div>
-
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-sm font-medium flex items-center gap-3"
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary text-black py-4 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                {error}
-              </motion.div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-black py-4 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-            >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : (
-                <>
-                  <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
-                  <ArrowRight size={24} />
-                </>
-              )}
-            </button>
-          </form>
+                {isLoading ? (
+                  <Loader2 className="animate-spin" size={24} />
+                ) : (
+                  <>
+                    <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+                    <ArrowRight size={24} />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
 
           <div className="mt-8 text-center">
+            <p className="text-gray-500 text-sm mb-2 font-medium">
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+            </p>
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-gray-400 hover:text-white transition-colors text-sm font-bold"
+              className="text-primary hover:text-primary/80 transition-colors text-sm font-black uppercase tracking-wider"
             >
-              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+              {isLogin ? "Sign Up Now" : "Sign In Instead"}
             </button>
           </div>
 

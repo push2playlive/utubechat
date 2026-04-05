@@ -26,7 +26,7 @@ import { TopUpModal } from './components/TopUpModal';
 import { AuthView } from './components/AuthView';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard } from 'lucide-react';
+import { Coins, User as UserIcon, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard } from 'lucide-react';
 import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType } from './supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -52,7 +52,7 @@ function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isTuningMode, setIsTuningMode] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<any>(null);
-  const [user, setUser] = useState<User>(CURRENT_USER);
+  const [user, setUser] = useState<User | null>(null);
   const [miniPlayerVideo, setMiniPlayerVideo] = useState<Video | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(false);
@@ -60,6 +60,7 @@ function App() {
   const [selectedAdVideoId, setSelectedAdVideoId] = useState<string | null>(null);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [showAuthView, setShowAuthView] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [initialSettingsSubView, setInitialSettingsSubView] = useState<'main' | 'profile' | 'payments' | 'appearance'>('main');
   const [currentTheme, setCurrentTheme] = useState(() => {
     const saved = localStorage.getItem('utubechat_theme');
@@ -236,10 +237,40 @@ function App() {
           email: newUser.email,
           photoURL: newUser.photo_url
         });
-      } else if (userProfile && sUser.email === 'findlaygary25@gmail.com' && userProfile.role !== 'admin') {
-        // Ensure this specific email is always admin
-        await supabase.from('users').update({ role: 'admin' }).eq('id', sUser.id);
-        await supabase.from('public_profiles').update({ role: 'admin' }).eq('id', sUser.id);
+
+        setUser({
+          id: newUser.id,
+          name: newUser.display_name,
+          username: `@${newUser.display_name.toLowerCase().replace(/\s+/g, '')}`,
+          email: newUser.email,
+          avatar: newUser.photo_url,
+          coins: newUser.coins,
+          followers: newUser.followers,
+          following: newUser.following,
+          likes: newUser.likes,
+          role: newUser.role as any
+        });
+      } else if (userProfile) {
+        if (sUser.email === 'findlaygary25@gmail.com' && userProfile.role !== 'admin') {
+          // Ensure this specific email is always admin
+          await supabase.from('users').update({ role: 'admin' }).eq('id', sUser.id);
+          await supabase.from('public_profiles').update({ role: 'admin' }).eq('id', sUser.id);
+          userProfile.role = 'admin';
+        }
+        
+        setUser({
+          id: userProfile.id,
+          name: userProfile.display_name,
+          username: userProfile.username || `@${userProfile.display_name.toLowerCase().replace(/\s+/g, '')}`,
+          email: userProfile.email,
+          avatar: userProfile.photo_url,
+          coins: userProfile.coins,
+          followers: userProfile.followers,
+          following: userProfile.following,
+          likes: userProfile.likes,
+          role: userProfile.role as any,
+          socialLinks: userProfile.social_links
+        });
       }
     } catch (error) {
       console.error('Error syncing user profile:', error);
@@ -658,7 +689,10 @@ function App() {
   }, [currentView, isOverlayOpen]);
 
   const handleVideoUpload = async (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string; audioUrl?: string; audioName?: string }) => {
-    if (!supabaseUser) return;
+    if (!user || !supabaseUser) {
+      setShowAuthView(true);
+      return;
+    }
 
     setIsRefreshing(true);
     try {
@@ -829,8 +863,14 @@ function App() {
           animate={{ scale: 1, opacity: 1 }}
           className="mb-12"
         >
-          <div className="w-24 h-24 bg-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-amber-500/20">
-            <Zap size={48} className="text-black" />
+          <div className="w-24 h-24 bg-primary/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/20 overflow-hidden border border-primary/30">
+            <img 
+              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+              alt="utubechat Logo" 
+              className="w-full h-full object-cover"
+              style={{ filter: 'var(--logo-filter)' }}
+              referrerPolicy="no-referrer"
+            />
           </div>
           <h1 className="text-4xl font-black text-white mb-2 tracking-tighter">utubechat</h1>
           <p className="text-gray-400 text-sm uppercase tracking-widest">Be Social. Get Paid.</p>
@@ -847,6 +887,23 @@ function App() {
             </motion.div>
           )}
           <button 
+            onClick={() => {
+              setAuthMode('signup');
+              setShowAuthView(true);
+            }}
+            className="w-full bg-primary text-black font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
+          >
+            <Sparkles size={20} />
+            <span className="text-lg">Create an Account</span>
+          </button>
+
+          <div className="flex items-center gap-4 py-2">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 text-[10px] uppercase font-bold tracking-widest">or</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
+          <button 
             onClick={handleGoogleSignIn}
             className="w-full bg-white text-black font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-all active:scale-95"
           >
@@ -854,12 +911,6 @@ function App() {
             <span className="text-sm">Continue with Google</span>
           </button>
           
-          <div className="flex items-center gap-4 py-2">
-            <div className="flex-1 h-px bg-gray-800" />
-            <span className="text-gray-600 text-[10px] uppercase font-bold tracking-widest">or</span>
-            <div className="flex-1 h-px bg-gray-800" />
-          </div>
-
           <button 
             onClick={handleGuestSignIn}
             className="w-full bg-gray-900 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-800 border border-white/10 transition-all active:scale-95"
@@ -869,10 +920,13 @@ function App() {
           </button>
 
           <button 
-            onClick={() => setShowAuthView(true)}
-            className="w-full bg-gray-900 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-800 border border-white/10 transition-all active:scale-95"
+            onClick={() => {
+              setAuthMode('login');
+              setShowAuthView(true);
+            }}
+            className="w-full bg-transparent text-gray-400 font-bold py-3 rounded-2xl flex items-center justify-center gap-3 hover:text-white transition-all active:scale-95"
           >
-            <Mail size={18} className="text-blue-500" />
+            <Mail size={18} />
             <span className="text-sm">Sign in with Email</span>
           </button>
 
@@ -886,6 +940,7 @@ function App() {
             <AuthView 
               onLogin={handleCustomLogin} 
               onClose={() => setShowAuthView(false)}
+              initialMode={authMode}
             />
           )}
         </AnimatePresence>
@@ -935,7 +990,7 @@ function App() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 h-screen overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black relative"
+        className="flex-1 h-[calc(100vh-4rem)] pt-16 overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black relative"
       >
         {videos.map((video, index) => (
           <VideoCard 
@@ -1530,25 +1585,36 @@ function App() {
               currentView === 'profile' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-[#9298a6] hover:border-[#9298a6]'
             }`}
             onClick={() => {
-              setCurrentView('profile');
+              if (!user) {
+                setShowAuthView(true);
+              } else {
+                setCurrentView('profile');
+              }
             }}
           >
-            <img src={user.avatar} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            {user ? (
+              <img src={user.avatar} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-primary text-black">
+                <UserIcon size={18} />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Coin Toast */}
+      {/* Coin Toast (Unified) */}
       <AnimatePresence>
         {showCoinToast && (
           <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 20 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg"
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 24 }}
+            exit={{ opacity: 0, y: -100 }}
+            className="fixed top-0 left-1/2 -translate-x-1/2 z-[300] bg-amber-500 text-black px-6 py-3 rounded-full font-black flex items-center gap-3 shadow-[0_0_30px_rgba(245,158,11,0.4)] border border-amber-400/50"
           >
-            <UtubechatCoin size={20} />
-            <span>+1 utubechat Coin earned!</span>
+            <UtubechatCoin size={24} />
+            <span className="tracking-tight">Coin Reward Earned!</span>
+            <div className="bg-black/10 px-2 py-0.5 rounded-lg text-xs font-black">+1</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1880,21 +1946,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Coin Earning Toast */}
-      <AnimatePresence>
-        {showCoinToast && (
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 z-[110] shadow-lg"
-          >
-            <UtubechatCoin size={18} />
-            <span>+5 utubechat Coins!</span>
-            <CheckCircle size={16} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Coin Earning Toast removed - unified above */}
 
       {/* System Tuning Overlay */}
       <AnimatePresence>
@@ -1929,17 +1981,6 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Menu Toggle Button (Overlay) */}
-      {currentView === 'home' && (
-        <button 
-          onClick={() => setIsMenuOpen(true)}
-          className="absolute top-4 left-4 z-[55] w-10 h-10 flex items-center justify-center text-white opacity-0 pointer-events-auto"
-          style={{ opacity: 1 }} // Just to make it visible for now
-        >
-          {/* This would normally be a swipe gesture or a hidden button */}
-        </button>
-      )}
 
       <AnimatePresence>
         {isAdminOpen && (

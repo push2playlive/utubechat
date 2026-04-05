@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronUp, ChevronDown, MoreHorizontal, X, Send, User, Maximize2, Minimize2, Volume2, VolumeX, Languages, Mail, Play, AlertCircle, Heart, Bookmark, ThumbsDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, MoreHorizontal, X, Send, User, Maximize2, Minimize2, Volume2, VolumeX, Languages, Mail, Play, AlertCircle, Heart, Bookmark, ThumbsDown, CheckCircle } from 'lucide-react';
 import { Video } from '../types';
 import { Comments } from './Comments';
 import { ShareModal } from './ShareModal';
@@ -259,198 +259,222 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   return (
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden items-center justify-center relative">
+    <div className="flex h-full bg-black text-white font-sans items-end justify-center relative">
       
-      {/* CINEMATIC VIDEO FRAME */}
-      <div 
-        className={`relative transition-all duration-500 ease-out ${
-          isFullscreen 
-            ? 'w-full h-full rounded-0' 
-            : 'aspect-[9/16] h-[92vh] bg-[#050505] rounded-[2.5rem] shadow-[0_0_80px_rgba(0,0,0,1)] border border-white/5'
-        } overflow-hidden group`}
-        onDoubleClick={handleDoubleClick}
-        onContextMenu={handleContextMenu}
-        onTouchStart={handleLongPressStart}
-        onTouchEnd={handleLongPressEnd}
-        onMouseDown={handleLongPressStart}
-        onMouseUp={handleLongPressEnd}
-        onMouseLeave={handleLongPressEnd}
-      >
-        <video 
-          ref={videoRef}
-          className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-700 cursor-pointer"
-          style={{ 
-            filter: PREDEFINED_EFFECTS.find(e => e.id === video.effect)?.filter || 'none'
-          }}
-          src={video.url}
-          loop={loop}
-          muted={isMuted || !!video.audioUrl}
-          playsInline
-          onClick={togglePlay}
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={() => {
-            if (isAutoScrollEnabled) {
-              onNext?.();
-            }
-          }}
-        />
-
-        {video.audioUrl && (
-          <audio
-            ref={audioRef}
-            src={video.audioUrl}
+      {/* WRAPPER FOR FRAME + OUTSIDE NAV */}
+      <div className="relative h-full flex items-end">
+        
+        {/* CINEMATIC VIDEO FRAME */}
+        <div 
+          className={`relative transition-all duration-500 ease-out ${
+            isFullscreen 
+              ? 'w-full h-full rounded-0' 
+              : 'aspect-[9/16] h-full bg-[#050505] rounded-[2.5rem] shadow-[0_0_80px_rgba(0,0,0,1)] border border-white/5'
+          } overflow-hidden group`}
+          onDoubleClick={handleDoubleClick}
+          onContextMenu={handleContextMenu}
+          onTouchStart={handleLongPressStart}
+          onTouchEnd={handleLongPressEnd}
+          onMouseDown={handleLongPressStart}
+          onMouseUp={handleLongPressEnd}
+          onMouseLeave={handleLongPressEnd}
+        >
+          <video 
+            ref={videoRef}
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-700 cursor-pointer"
+            style={{ 
+              filter: PREDEFINED_EFFECTS.find(e => e.id === video.effect)?.filter || 'none'
+            }}
+            src={video.url}
             loop={loop}
-            muted={isMuted}
+            muted={isMuted || !!video.audioUrl}
+            playsInline
+            onClick={togglePlay}
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={() => {
+              if (isAutoScrollEnabled) {
+                onNext?.();
+              }
+            }}
           />
-        )}
 
-        {/* 🚀 THE CLASSIC GLASS INTERACTION STACK - Clean & Integrated */}
-        {!isFullscreen && (
-          <>
-            <VideoActionStack 
-              likes={likes}
-              comments={video.comments}
-              shares={video.shares}
-              isLiked={isLiked}
-              isFollowed={isFollowed}
-              isBookmarked={isBookmarked}
-              onLike={toggleLike}
-              onFollow={toggleFollow}
-              onComment={() => { setShowComments(true); onCommentClick?.(); }}
-              onShare={() => setShowShareModal(true)}
-              onBookmark={() => setIsBookmarked(!isBookmarked)}
-              onMore={() => setShowMoreMenu(!showMoreMenu)}
-              onPromote={onPromoteClick ? () => onPromoteClick(video.id) : undefined}
-              formatNumber={formatNumber}
+          {video.audioUrl && (
+            <audio
+              ref={audioRef}
+              src={video.audioUrl}
+              loop={loop}
+              muted={isMuted}
             />
+          )}
 
-            <AnimatePresence>
-              {showMoreMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
-                  className="absolute bottom-24 right-16 w-56 bg-slate-900/95 backdrop-blur-2xl border border-slate-800 rounded-2xl p-2 shadow-2xl z-[60] overflow-hidden"
-                >
-                  <div className="flex flex-col gap-1">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsAutoScrollEnabled(!isAutoScrollEnabled); }}
-                      className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isAutoScrollEnabled ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/5 text-gray-300'}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <ChevronDown size={18} />
-                        <span className="text-xs font-bold">Auto Scroll</span>
-                      </div>
-                      <div className={`w-8 h-4 rounded-full relative transition-colors ${isAutoScrollEnabled ? 'bg-amber-500' : 'bg-gray-700'}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoScrollEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                      </div>
-                    </button>
+          {/* Subtle Gradient Scrim for Readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        onMessageClick?.({ 
-                          uid: video.authorId, 
-                          displayName: video.author, 
-                          photoURL: video.authorPhoto 
-                        }); 
-                        setShowMoreMenu(false); 
-                      }}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
-                    >
-                      <Mail size={18} />
-                      <span className="text-xs font-bold">Direct Message</span>
-                    </button>
+          {/* Heart Animation */}
+          <AnimatePresence>
+            {showHeart && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0, rotate: -20 }}
+                animate={{ scale: 1.5, opacity: 1, rotate: 0 }}
+                exit={{ scale: 2, opacity: 0, rotate: 20 }}
+                className="absolute z-50 pointer-events-none"
+                style={{ left: heartPos.x - 50, top: heartPos.y - 50 }}
+              >
+                <Heart fill="#ef4444" color="#ef4444" size={100} className="drop-shadow-2xl" />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); setShowMoreMenu(false); }}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
-                    >
-                      <Maximize2 size={18} />
-                      <span className="text-xs font-bold">Fullscreen</span>
-                    </button>
+          {/* Play/Pause Overlay */}
+          <AnimatePresence>
+            {!isPlaying && isActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 1.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+              >
+                <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10">
+                  <Play size={40} fill="white" className="text-white ml-1" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onMiniPlayer?.(video); setShowMoreMenu(false); }}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
-                    >
-                      <Minimize2 size={18} />
-                      <span className="text-xs font-bold">Mini Player</span>
-                    </button>
+          {/* Fullscreen Exit */}
+          {isFullscreen && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
+              className="absolute top-8 right-8 z-50 w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60 transition-all"
+            >
+              <X size={24} />
+            </button>
+          )}
 
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
-                    >
-                      {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                      <span className="text-xs font-bold">{isMuted ? 'Unmute' : 'Mute'}</span>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
-        )}
-
-        {/* OVERLAY INFO - Integrated at the Bottom */}
-        {!isFullscreen && (
-          <div className="absolute left-6 bottom-10 right-20 pointer-events-none z-10">
-            <div className="pointer-events-auto">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-black text-lg tracking-tight shadow-black drop-shadow-md">@{video.author}</span>
-                <div className="bg-blue-500 rounded-full p-0.5"><ChevronUp size={10} className="text-white rotate-90" /></div>
-              </div>
-              <p className="text-sm font-medium leading-relaxed text-gray-200 drop-shadow-lg line-clamp-2">
-                {video.description}
-              </p>
+          {/* CAPTION (Landed Inside) */}
+          {!isFullscreen && (
+            <div className="absolute left-5 bottom-8 right-16 z-50 pointer-events-none">
+               <div className="flex items-center gap-2 mb-1">
+                  <span className="font-black text-white text-base drop-shadow-lg tracking-tight">
+                    @{video.author.startsWith('@') ? video.author.slice(1) : video.author}
+                  </span>
+                  <CheckCircle size={14} className="text-blue-500 fill-white drop-shadow-lg" />
+               </div>
+               <p className="text-white/90 text-sm line-clamp-2 drop-shadow-md leading-tight">
+                  {video.description}
+               </p>
             </div>
+          )}
+
+          {/* 🚀 THE ACTION STACK (INSIDE FRAME) */}
+          {!isFullscreen && (
+            <div className="absolute right-3 bottom-8 z-[100]">
+              <VideoActionStack 
+                authorPhoto={video.authorPhoto}
+                likes={likes}
+                comments={video.comments}
+                shares={video.shares}
+                isLiked={isLiked}
+                isFollowed={isFollowed}
+                isBookmarked={isBookmarked}
+                onLike={toggleLike}
+                onFollow={toggleFollow}
+                onComment={() => { setShowComments(true); onCommentClick?.(); }}
+                onShare={() => setShowShareModal(true)}
+                onBookmark={() => setIsBookmarked(!isBookmarked)}
+                onMore={() => setShowMoreMenu(!showMoreMenu)}
+                onPromote={onPromoteClick ? () => onPromoteClick(video.id) : undefined}
+                formatNumber={formatNumber}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* NAV ARROWS (OUTSIDE FRAME - RIGHT - DESKTOP ONLY) */}
+        {!isFullscreen && (
+          <div className="hidden md:flex absolute left-[calc(100%+1rem)] bottom-8 flex-col gap-5 z-50">
+             <button 
+               onClick={(e) => { e.stopPropagation(); onPrev?.(); }} 
+               className="w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav"
+             >
+               <ChevronUp size={24} strokeWidth={2.5} className="group-hover/nav:-translate-y-0.5 transition-transform" />
+             </button>
+             <button 
+               onClick={(e) => { e.stopPropagation(); onNext?.(); }} 
+               className="w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav"
+             >
+               <ChevronDown size={24} strokeWidth={2.5} className="group-hover/nav:translate-y-0.5 transition-transform" />
+             </button>
           </div>
         )}
-
-        {/* Subtle Gradient Scrim for Readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
-
-        {/* Heart Animation */}
-        <AnimatePresence>
-          {showHeart && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0, rotate: -20 }}
-              animate={{ scale: 1.5, opacity: 1, rotate: 0 }}
-              exit={{ scale: 2, opacity: 0, rotate: 20 }}
-              className="absolute z-50 pointer-events-none"
-              style={{ left: heartPos.x - 50, top: heartPos.y - 50 }}
-            >
-              <Heart fill="#ef4444" color="#ef4444" size={100} className="drop-shadow-2xl" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Play/Pause Overlay */}
-        <AnimatePresence>
-          {!isPlaying && isActive && (
-            <motion.div
-              initial={{ opacity: 0, scale: 1.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-            >
-              <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10">
-                <Play size={40} fill="white" className="text-white ml-1" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Fullscreen Exit */}
-        {isFullscreen && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
-            className="absolute top-8 right-8 z-50 w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60 transition-all"
-          >
-            <X size={24} />
-          </button>
-        )}
       </div>
+
+      {/* More Menu Overlay */}
+      <AnimatePresence>
+        {showMoreMenu && !isFullscreen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, x: 20, y: 20 }}
+            className="absolute bottom-48 right-24 w-56 bg-slate-900/95 backdrop-blur-2xl border border-slate-800 rounded-2xl p-2 shadow-2xl z-[110] overflow-hidden"
+          >
+                <div className="flex flex-col gap-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsAutoScrollEnabled(!isAutoScrollEnabled); }}
+                    className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isAutoScrollEnabled ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/5 text-gray-300'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <ChevronDown size={18} />
+                      <span className="text-xs font-bold">Auto Scroll</span>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${isAutoScrollEnabled ? 'bg-amber-500' : 'bg-gray-700'}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoScrollEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onMessageClick?.({ 
+                        uid: video.authorId, 
+                        displayName: video.author, 
+                        photoURL: video.authorPhoto 
+                      }); 
+                      setShowMoreMenu(false); 
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
+                  >
+                    <Mail size={18} />
+                    <span className="text-xs font-bold">Direct Message</span>
+                  </button>
+
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); setShowMoreMenu(false); }}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
+                  >
+                    <Maximize2 size={18} />
+                    <span className="text-xs font-bold">Fullscreen</span>
+                  </button>
+
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onMiniPlayer?.(video); setShowMoreMenu(false); }}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
+                  >
+                    <Minimize2 size={18} />
+                    <span className="text-xs font-bold">Mini Player</span>
+                  </button>
+
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-gray-300 transition-colors"
+                  >
+                    {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                    <span className="text-xs font-bold">{isMuted ? 'Unmute' : 'Mute'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
       {/* Comments Drawer (Mobile Only) */}
       <AnimatePresence>
