@@ -63,13 +63,13 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
     
     const fetchCampaigns = async () => {
       const { data, error } = await supabase
-        .from('campaigns')
+        .from('ad_campaigns')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        handleSupabaseError(error, OperationType.GET, 'campaigns');
+        handleSupabaseError(error, OperationType.GET, 'ad_campaigns');
       } else {
         setCampaigns(data);
       }
@@ -78,11 +78,11 @@ export const AdCenterView: React.FC<AdCenterViewProps> = ({ user, videos, onProm
     fetchCampaigns();
 
     const subscription = supabase
-      .channel('campaigns_changes')
+      .channel('ad_campaigns_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'campaigns',
+        table: 'ad_campaigns',
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         if (payload.eventType === 'INSERT') {

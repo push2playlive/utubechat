@@ -6,14 +6,15 @@ interface TopNavProps {
   onTabChange: (tab: 'following' | 'foryou') => void;
   onLiveClick?: () => void;
   onSearchClick?: () => void;
+  onHomeClick?: () => void;
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveClick, onSearchClick }) => {
+export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveClick, onSearchClick, onHomeClick }) => {
   return (
     <div className="fixed top-0 left-0 right-0 h-16 flex items-center justify-between px-4 z-50 pointer-events-none">
       <div 
         className="pointer-events-auto cursor-pointer w-7 h-7 rounded-full bg-amber-500 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center" 
-        onClick={onLiveClick}
+        onClick={onHomeClick}
         style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png')` }}
       >
         <img 

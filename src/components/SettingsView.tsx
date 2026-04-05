@@ -62,6 +62,10 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [walletAddress, setWalletAddress] = useState(user.wallet_address || '');
+  const [tiktok, setTiktok] = useState(user.socialLinks?.tiktok || '');
+  const [youtube, setYoutube] = useState(user.socialLinks?.youtube || '');
+  const [facebook, setFacebook] = useState(user.socialLinks?.facebook || '');
+  const [instagram, setInstagram] = useState(user.socialLinks?.instagram || '');
 
   useEffect(() => {
     if (!user.id) return;
@@ -115,6 +119,10 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
           phone,
           location,
           wallet_address: walletAddress,
+          tiktok_url: tiktok,
+          youtube_url: youtube,
+          facebook_url: facebook,
+          instagram_url: instagram,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -127,6 +135,10 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
         .update({
           display_name: displayName,
           photo_url: avatar,
+          tiktok_url: tiktok,
+          youtube_url: youtube,
+          facebook_url: facebook,
+          instagram_url: instagram,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -328,6 +340,66 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
             />
           </div>
           <p className="text-[10px] text-gray-600 ml-2 italic">Used for utubechat Coin withdrawals and rewards.</p>
+        </div>
+
+        <div className="space-y-4 pt-4">
+          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Social Links (Promotion)</h3>
+          
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-2">TikTok URL</label>
+            <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
+              <Smartphone size={18} className="text-pink-500" />
+              <input 
+                type="url" 
+                value={tiktok} 
+                onChange={(e) => setTiktok(e.target.value)}
+                placeholder="https://tiktok.com/@username"
+                className="bg-transparent text-white text-sm outline-none flex-1" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-2">YouTube URL</label>
+            <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
+              <Zap size={18} className="text-red-500" />
+              <input 
+                type="url" 
+                value={youtube} 
+                onChange={(e) => setYoutube(e.target.value)}
+                placeholder="https://youtube.com/@channel"
+                className="bg-transparent text-white text-sm outline-none flex-1" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-2">Facebook URL</label>
+            <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
+              <Globe size={18} className="text-blue-600" />
+              <input 
+                type="url" 
+                value={facebook} 
+                onChange={(e) => setFacebook(e.target.value)}
+                placeholder="https://facebook.com/profile"
+                className="bg-transparent text-white text-sm outline-none flex-1" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-2">Instagram URL</label>
+            <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-center gap-3">
+              <Camera size={18} className="text-purple-500" />
+              <input 
+                type="url" 
+                value={instagram} 
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="https://instagram.com/username"
+                className="bg-transparent text-white text-sm outline-none flex-1" 
+              />
+            </div>
+          </div>
         </div>
       </div>
 

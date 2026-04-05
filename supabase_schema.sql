@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS public.users (
     likes INTEGER DEFAULT 0,
     bio TEXT,
     wallet_address TEXT,
+    tiktok_url TEXT,
+    youtube_url TEXT,
+    facebook_url TEXT,
+    instagram_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -33,6 +37,10 @@ CREATE TABLE IF NOT EXISTS public.public_profiles (
     following INTEGER DEFAULT 0,
     likes INTEGER DEFAULT 0,
     bio TEXT,
+    tiktok_url TEXT,
+    youtube_url TEXT,
+    facebook_url TEXT,
+    instagram_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -132,6 +140,29 @@ CREATE TABLE IF NOT EXISTS public.messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 10. Ad Campaigns
+CREATE TABLE IF NOT EXISTS public.ad_campaigns (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    video_id UUID REFERENCES public.videos(id) ON DELETE CASCADE,
+    profile_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    package_id TEXT NOT NULL,
+    target_views INTEGER NOT NULL,
+    current_views INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 11. Sidebar Ads (Global)
+CREATE TABLE IF NOT EXISTS public.sidebar_ads (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    image_url TEXT NOT NULL,
+    link_url TEXT NOT NULL,
+    title TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- RLS (Row Level Security)
 
 -- Enable RLS
@@ -145,6 +176,8 @@ ALTER TABLE public.missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ad_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sidebar_ads ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 
@@ -177,6 +210,16 @@ CREATE POLICY "Users can view own assets" ON public.assets FOR SELECT USING (aut
 
 -- Missions: Read own, update own (via RPC)
 CREATE POLICY "Users can view own missions" ON public.missions FOR SELECT USING (auth.uid() = user_id);
+
+-- Ad Campaigns: Read own, insert own
+CREATE POLICY "Users can view own campaigns" ON public.ad_campaigns FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own campaigns" ON public.ad_campaigns FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Sidebar Ads: Everyone can read, only admin can manage
+CREATE POLICY "Sidebar ads are viewable by everyone" ON public.sidebar_ads FOR SELECT USING (true);
+CREATE POLICY "Only admins can manage sidebar ads" ON public.sidebar_ads FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+);
 
 -- RPC Functions for Atomic Operations
 

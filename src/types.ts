@@ -34,6 +34,12 @@ export interface User {
   coursesCompleted?: number;
   referralCredits?: number;
   createdAt?: string;
+  socialLinks?: {
+    tiktok?: string;
+    youtube?: string;
+    facebook?: string;
+    instagram?: string;
+  };
 }
 
 export interface PartnerSite {

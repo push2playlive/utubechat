@@ -20,12 +20,13 @@ import { Comments } from './components/Comments';
 import { DiscoverView } from './components/DiscoverView';
 import { AdCenterView } from './components/AdCenterView';
 import { AdminView } from './components/AdminView';
+import { SidebarAds } from './components/SidebarAds';
 import { UtubechatCoin } from './components/UtubechatCoin';
 import { TopUpModal } from './components/TopUpModal';
 import { AuthView } from './components/AuthView';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import { View, User, Video } from './types';
-import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail } from 'lucide-react';
+import { Coins, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard } from 'lucide-react';
 import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType } from './supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -286,7 +287,13 @@ function App() {
               role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user'),
               createdAt: data.created_at,
               referralCredits: (data.referrals || 0) * 10,
-              coursesCompleted: 0 // Will fetch below
+              coursesCompleted: 0, // Will fetch below
+              socialLinks: {
+                tiktok: data.tiktok_url,
+                youtube: data.youtube_url,
+                facebook: data.facebook_url,
+                instagram: data.instagram_url
+              }
             });
 
             // Fetch courses completed
@@ -333,7 +340,13 @@ function App() {
               following: data.following || 0,
               likes: data.likes || 0,
               role: data.role || (data.email === 'push2playlive@gmail.com' || data.email === 'findlaygary25@gmail.com' ? 'admin' : 'user'),
-              referralCredits: (data.referrals || 0) * 10
+              referralCredits: (data.referrals || 0) * 10,
+              socialLinks: {
+                tiktok: data.tiktok_url,
+                youtube: data.youtube_url,
+                facebook: data.facebook_url,
+                instagram: data.instagram_url
+              }
             }));
           }
         )
@@ -884,14 +897,7 @@ function App() {
     <div className="h-full w-full flex bg-[#050505]">
       {/* Left Sidebar (Desktop Only) */}
       <div className="hidden lg:flex flex-col w-80 border-r border-[#9298a6] p-6 pt-20 gap-6">
-        <div className="flex gap-2">
-          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-[#9298a6] flex items-center justify-center text-gray-500 text-xs text-center p-4">
-            Advertise here
-          </div>
-          <div className="flex-1 aspect-square bg-gray-900 rounded-lg border border-dashed border-[#9298a6] flex items-center justify-center text-gray-500 text-xs text-center p-4">
-            Advertise here
-          </div>
-        </div>
+        <SidebarAds />
 
         <div className="flex bg-gray-900 rounded-lg p-1">
           <button className="flex-1 py-2 text-sm font-bold text-gray-400">Category</button>
@@ -1002,6 +1008,31 @@ function App() {
         </div>
         <h2 className="text-xl font-bold">{user.name}</h2>
         <p className="text-gray-400 text-sm mb-6">{user.username}</p>
+
+        {user.socialLinks && (Object.values(user.socialLinks).some(link => !!link)) && (
+          <div className="flex gap-4 mb-6">
+            {user.socialLinks.tiktok && (
+              <a href={user.socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-500 hover:bg-pink-500 hover:text-white transition-all">
+                <Smartphone size={20} />
+              </a>
+            )}
+            {user.socialLinks.youtube && (
+              <a href={user.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                <Zap size={20} />
+              </a>
+            )}
+            {user.socialLinks.facebook && (
+              <a href={user.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all">
+                <Globe size={20} />
+              </a>
+            )}
+            {user.socialLinks.instagram && (
+              <a href={user.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500 hover:bg-purple-500 hover:text-white transition-all">
+                <Camera size={20} />
+              </a>
+            )}
+          </div>
+        )}
         
         <div className="flex gap-8 mb-8">
           <div className="flex flex-col items-center">
@@ -1057,11 +1088,59 @@ function App() {
             </div>
             <span className="text-yellow-500 font-bold">{user.coins.toLocaleString()}</span>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => setIsTopUpModalOpen(true)}
+              className="bg-yellow-500 text-black py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors"
+            >
+              Buy Coins
+            </button>
+            <button 
+              onClick={() => setCurrentView('ad-center')}
+              className="bg-amber-500/20 text-amber-500 py-2 rounded-lg font-bold text-sm hover:bg-amber-500/30 transition-colors border border-amber-500/30 flex items-center justify-center gap-2"
+            >
+              <Megaphone size={16} />
+              Promote
+            </button>
+          </div>
+        </div>
+
+        <div className="w-full grid grid-cols-3 gap-3 mb-8">
           <button 
-            onClick={() => setIsTopUpModalOpen(true)}
-            className="w-full bg-yellow-500 text-black py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors"
+            onClick={() => {
+              setInitialSettingsSubView('security');
+              setCurrentView('settings');
+            }}
+            className="flex flex-col items-center gap-2 p-3 bg-gray-900/50 rounded-2xl border border-[#9298a6] hover:bg-gray-800 transition-all group"
           >
-            Buy More Coins
+            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 group-hover:bg-green-500 group-hover:text-black transition-all">
+              <Shield size={20} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-white">Security</span>
+          </button>
+          <button 
+            onClick={() => {
+              setInitialSettingsSubView('privacy');
+              setCurrentView('settings');
+            }}
+            className="flex flex-col items-center gap-2 p-3 bg-gray-900/50 rounded-2xl border border-[#9298a6] hover:bg-gray-800 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center text-pink-500 group-hover:bg-pink-500 group-hover:text-black transition-all">
+              <Eye size={20} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-white">Privacy</span>
+          </button>
+          <button 
+            onClick={() => {
+              setInitialSettingsSubView('payments');
+              setCurrentView('settings');
+            }}
+            className="flex flex-col items-center gap-2 p-3 bg-gray-900/50 rounded-2xl border border-[#9298a6] hover:bg-gray-800 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-black transition-all">
+              <CreditCard size={20} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-white">Wallet</span>
           </button>
         </div>
 
@@ -1356,7 +1435,16 @@ function App() {
 
       {/* Top Header (Desktop Only) */}
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-[#050505] border-b border-[#9298a6] z-[55] items-center px-6 justify-between">
-        <div className="flex items-center gap-4">
+        <div 
+          className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => {
+            setCurrentView('home');
+            setActiveVideoIndex(0);
+            if (containerRef.current) {
+              containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        >
           <div 
             className="w-8 h-8 rounded-full bg-primary/20 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center border border-primary/30"
             style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png')`, backgroundBlendMode: 'overlay' }}
@@ -1475,6 +1563,13 @@ function App() {
               onLiveClick={() => setIsLiveOpen(true)}
               onSearchClick={() => {
                 setCurrentView('discover');
+              }}
+              onHomeClick={() => {
+                setCurrentView('home');
+                setActiveVideoIndex(0);
+                if (containerRef.current) {
+                  containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                }
               }}
             />
             {renderHome()}
