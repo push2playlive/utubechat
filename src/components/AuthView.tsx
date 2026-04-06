@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, AtSign, ArrowRight, Loader2, Sparkles, ShieldCheck, X } from 'lucide-react';
 import { User as UserType } from '../types';
 import { signInWithGoogle } from '../supabase';
+import { UtubeChatLogo } from './Logos';
 
 interface AuthViewProps {
   onLogin: (user: UserType) => void;
@@ -92,13 +93,7 @@ export function AuthView({ onLogin, onClose, initialMode = 'login' }: AuthViewPr
               transition={{ repeat: Infinity, duration: 4, repeatType: "reverse" }}
               className="w-20 h-20 bg-primary/20 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-primary/30"
             >
-              <img 
-                src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
-                alt="utubechat Logo" 
-                className="w-full h-full object-cover"
-                style={{ filter: 'var(--logo-filter)' }}
-                referrerPolicy="no-referrer"
-              />
+              <UtubeChatLogo size={64} color="var(--logo-color)" />
             </motion.div>
             <h1 className="text-3xl font-black text-white mb-2 tracking-tight">
               {isLogin ? 'Welcome Back' : 'Join utubechat'}

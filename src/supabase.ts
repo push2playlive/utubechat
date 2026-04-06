@@ -9,12 +9,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
 
-const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isConfigured = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder'));
 
 // Auth helper functions
 export const signInWithGoogle = async () => {
   if (!isConfigured) {
-    throw new Error('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
+    throw new Error('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file in the Settings menu.');
   }
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({

@@ -16,6 +16,7 @@ export interface Video {
   effect?: string;
   customEffectUrl?: string;
   captions?: string[];
+  createdAt?: string;
 }
 
 export interface User {
@@ -23,6 +24,8 @@ export interface User {
   name: string;
   username: string;
   email?: string;
+  phone?: string;
+  location?: string;
   bio: string;
   coins: number;
   followers: number;

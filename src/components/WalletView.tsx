@@ -119,9 +119,9 @@ export const WalletView: React.FC<WalletViewProps> = ({ user, onClose, onSwap })
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 bg-black z-[100] flex flex-col pt-16 lg:pt-20"
+      className="fixed inset-0 bg-black z-[100] flex flex-col pt-16 lg:pt-20 overflow-y-auto scrollbar-hide"
     >
-      <div className="max-w-4xl mx-auto w-full h-full flex flex-col p-6">
+      <div className="max-w-4xl mx-auto w-full min-h-full flex flex-col p-6">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-[#9298a6]">

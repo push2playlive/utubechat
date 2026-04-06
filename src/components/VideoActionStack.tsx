@@ -40,7 +40,7 @@ const ActionButton = ({
   activeBg?: string,
   activeBorder?: string
 }) => (
-  <div className="flex flex-col items-center gap-1 group/btn cursor-pointer" onClick={onClick}>
+  <div className="flex flex-col items-center gap-1 group/btn cursor-pointer" onClick={onClick} title={label}>
     <div className={`
       w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl transition-all duration-300 shadow-2xl
       ${isPromote 
@@ -56,7 +56,7 @@ const ActionButton = ({
         fill: isActive ? "currentColor" : "none"
       })}
     </div>
-    <span className="text-[11px] font-black tracking-tight text-white drop-shadow-md opacity-80 uppercase">
+    <span className="text-[10px] font-black tracking-tight text-white drop-shadow-md opacity-100 uppercase bg-black/20 px-1.5 py-0.5 rounded-full">
       {label}
     </span>
   </div>
@@ -91,7 +91,12 @@ const VideoActionStack: React.FC<VideoActionStackProps> = ({
           )}
         </div>
         {!isFollowed && (
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-fuchsia-600 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold border border-black shadow-md">+</div>
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white rounded-full w-5 h-5 flex items-center justify-center border border-black shadow-md overflow-hidden animate-bounce">
+            <div 
+              className="w-full h-full bg-cover bg-center"
+              style={{ backgroundImage: 'var(--logo-url)' }}
+            />
+          </div>
         )}
       </div>
 

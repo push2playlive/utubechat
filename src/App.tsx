@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { VideoCard } from './components/VideoCard';
+import VideoActionStack from './components/VideoActionStack';
 import { BottomNav } from './components/BottomNav';
 import { TopNav } from './components/TopNav';
 import { CreateView } from './components/CreateView';
@@ -24,10 +25,13 @@ import { SidebarAds } from './components/SidebarAds';
 import { UtubechatCoin } from './components/UtubechatCoin';
 import { TopUpModal } from './components/TopUpModal';
 import { AuthView } from './components/AuthView';
+import { AboutUsView } from './components/AboutUsView';
+import { SidebarMenu } from './components/SidebarMenu';
+import { HamburgerIcon } from './components/Logos';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
-import { View, User, Video } from './types';
-import { Coins, User as UserIcon, Settings, HelpCircle, LogOut, ChevronRight, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard } from 'lucide-react';
-import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType } from './supabase';
+import type { View, User, Video } from './types';
+import { Coins, User as UserIcon, Settings, HelpCircle, LogOut, ChevronRight, ChevronUp, ChevronDown, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard, Home, Plus, MessageCircle, Phone, MapPin, Info, Menu } from 'lucide-react';
+import { supabase, signInWithGoogle, signInAnonymously, logout, handleSupabaseError, OperationType, isConfigured } from './supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 import { commandNexusService } from './services/commandNexusService';
@@ -40,6 +44,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'following' | 'foryou'>('foryou');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isAffiliateOpen, setIsAffiliateOpen] = useState(false);
   const [isMakeupRoomOpen, setIsMakeupRoomOpen] = useState(false);
@@ -49,6 +54,7 @@ function App() {
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isCommentsSidebarOpen, setIsCommentsSidebarOpen] = useState(false);
+  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isTuningMode, setIsTuningMode] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<any>(null);
@@ -59,6 +65,8 @@ function App() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [selectedAdVideoId, setSelectedAdVideoId] = useState<string | null>(null);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAuthView, setShowAuthView] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [initialSettingsSubView, setInitialSettingsSubView] = useState<'main' | 'profile' | 'payments' | 'appearance'>('main');
@@ -76,14 +84,51 @@ function App() {
   // Theme Effect
   useEffect(() => {
     const themes: Record<string, { color: string, rgb: string, filter: string }> = {
-      red: { color: '#ef4444', rgb: '239, 68, 68', filter: 'hue-rotate(0deg)' },
-      blue: { color: '#3b82f6', rgb: '59, 130, 246', filter: 'hue-rotate(220deg)' },
-      green: { color: '#22c55e', rgb: '34, 197, 94', filter: 'hue-rotate(120deg)' },
-      orange: { color: '#f97316', rgb: '249, 115, 22', filter: 'hue-rotate(30deg)' },
-      fuchsia: { color: '#d946ef', rgb: '217, 70, 239', filter: 'hue-rotate(300deg)' },
-      cyan: { color: '#06b6d4', rgb: '6, 182, 212', filter: 'hue-rotate(180deg)' },
-      yellow: { color: '#eab308', rgb: '234, 179, 8', filter: 'hue-rotate(60deg)' },
-      amber: { color: '#f59e0b', rgb: '245, 158, 11', filter: 'hue-rotate(45deg)' },
+      red: { 
+        color: '#ef4444', 
+        rgb: '239, 68, 68', 
+        filter: 'hue-rotate(0deg)'
+      },
+      blue: { 
+        color: '#3b82f6', 
+        rgb: '59, 130, 246', 
+        filter: 'hue-rotate(220deg)'
+      },
+      green: { 
+        color: '#22c55e', 
+        rgb: '34, 197, 94', 
+        filter: 'hue-rotate(120deg)'
+      },
+      orange: { 
+        color: '#f97316', 
+        rgb: '249, 115, 22', 
+        filter: 'hue-rotate(30deg)'
+      },
+      fuchsia: { 
+        color: '#d946ef', 
+        rgb: '217, 70, 239', 
+        filter: 'hue-rotate(300deg)'
+      },
+      cyan: { 
+        color: '#06b6d4', 
+        rgb: '6, 182, 212', 
+        filter: 'hue-rotate(180deg)'
+      },
+      yellow: { 
+        color: '#eab308', 
+        rgb: '234, 179, 8', 
+        filter: 'hue-rotate(60deg)'
+      },
+      amber: { 
+        color: '#f59e0b', 
+        rgb: '245, 158, 11', 
+        filter: 'hue-rotate(45deg)'
+      },
+      purple: { 
+        color: '#8b5cf6', 
+        rgb: '139, 92, 246', 
+        filter: 'hue-rotate(260deg)'
+      },
     };
 
     const theme = themes[currentTheme] || themes.red;
@@ -91,6 +136,7 @@ function App() {
     document.documentElement.style.setProperty('--primary-rgb', theme.rgb);
     document.documentElement.style.setProperty('--primary-glow', `rgba(${theme.rgb}, 0.2)`);
     document.documentElement.style.setProperty('--logo-filter', theme.filter);
+    document.documentElement.style.setProperty('--logo-color', theme.color);
     localStorage.setItem('utubechat_theme', currentTheme);
   }, [currentTheme]);
 
@@ -197,6 +243,22 @@ function App() {
   }, []);
 
   const syncUserProfile = async (sUser: SupabaseUser) => {
+    if (!isConfigured) {
+      // Use mock profile if Supabase is not configured
+      setUser({
+        id: sUser.id,
+        name: sUser.user_metadata.display_name || 'Guest User',
+        username: `@${(sUser.user_metadata.display_name || 'guest').toLowerCase().replace(/\s+/g, '')}`,
+        email: sUser.email || '',
+        avatar: sUser.user_metadata.avatar_url || `https://picsum.photos/seed/${sUser.id}/200/200`,
+        coins: 100,
+        followers: 0,
+        following: 0,
+        likes: 0,
+        role: 'user'
+      });
+      return;
+    }
     try {
       const { data: userProfile, error } = await supabase
         .from('users')
@@ -211,7 +273,7 @@ function App() {
           display_name: sUser.user_metadata.full_name || 'New User',
           email: sUser.email || '',
           photo_url: sUser.user_metadata.avatar_url || `https://picsum.photos/seed/${sUser.id}/200/200`,
-          role: sUser.email === 'findlaygary25@gmail.com' ? 'admin' : 'user',
+          role: (sUser.email === 'findlaygary25@gmail.com' || sUser.email === 'push2playlive@gmail.com') ? 'admin' : 'user',
           coins: 100,
           followers: 0,
           following: 0,
@@ -227,7 +289,7 @@ function App() {
           username: `@${newUser.display_name.toLowerCase().replace(/\s+/g, '')}`,
           followers: 0,
           likes: 0,
-          is_verified: sUser.email === 'findlaygary25@gmail.com',
+          is_verified: (sUser.email === 'findlaygary25@gmail.com' || sUser.email === 'push2playlive@gmail.com'),
           role: newUser.role
         }]);
 
@@ -244,6 +306,8 @@ function App() {
           username: `@${newUser.display_name.toLowerCase().replace(/\s+/g, '')}`,
           email: newUser.email,
           avatar: newUser.photo_url,
+          bio: '',
+          walletAddress: '',
           coins: newUser.coins,
           followers: newUser.followers,
           following: newUser.following,
@@ -251,7 +315,7 @@ function App() {
           role: newUser.role as any
         });
       } else if (userProfile) {
-        if (sUser.email === 'findlaygary25@gmail.com' && userProfile.role !== 'admin') {
+        if ((sUser.email === 'findlaygary25@gmail.com' || sUser.email === 'push2playlive@gmail.com') && userProfile.role !== 'admin') {
           // Ensure this specific email is always admin
           await supabase.from('users').update({ role: 'admin' }).eq('id', sUser.id);
           await supabase.from('public_profiles').update({ role: 'admin' }).eq('id', sUser.id);
@@ -263,13 +327,22 @@ function App() {
           name: userProfile.display_name,
           username: userProfile.username || `@${userProfile.display_name.toLowerCase().replace(/\s+/g, '')}`,
           email: userProfile.email,
+          phone: userProfile.phone,
+          location: userProfile.location,
+          bio: userProfile.bio || '',
           avatar: userProfile.photo_url,
+          walletAddress: userProfile.wallet_address,
           coins: userProfile.coins,
           followers: userProfile.followers,
           following: userProfile.following,
           likes: userProfile.likes,
           role: userProfile.role as any,
-          socialLinks: userProfile.social_links
+          socialLinks: {
+            tiktok: userProfile.tiktok_url,
+            youtube: userProfile.youtube_url,
+            facebook: userProfile.facebook_url,
+            instagram: userProfile.instagram_url
+          }
         });
       }
     } catch (error) {
@@ -279,7 +352,7 @@ function App() {
 
   // Sync User Data from Supabase and CommandNexus
   useEffect(() => {
-    if (supabaseUser) {
+    if (supabaseUser && isConfigured) {
       // Fetch initial user data
       const fetchUserData = async () => {
         try {
@@ -311,6 +384,11 @@ function App() {
               name: data.display_name,
               username: `@${data.display_name.toLowerCase().replace(/\s+/g, '')}`,
               avatar: data.photo_url,
+              email: data.email,
+              phone: data.phone,
+              location: data.location,
+              bio: data.bio || '',
+              walletAddress: data.wallet_address,
               coins: data.coins || 0,
               followers: data.followers || 0,
               following: data.following || 0,
@@ -366,6 +444,11 @@ function App() {
               ...prev,
               name: data.display_name,
               avatar: data.photo_url,
+              email: data.email,
+              phone: data.phone,
+              location: data.location,
+              bio: data.bio || '',
+              walletAddress: data.wallet_address,
               coins: data.coins || 0,
               followers: data.followers || 0,
               following: data.following || 0,
@@ -542,7 +625,7 @@ function App() {
 
   // Sync User Likes
   useEffect(() => {
-    if (!supabaseUser) {
+    if (!supabaseUser || !isConfigured) {
       setUserLikes([]);
       return;
     }
@@ -583,7 +666,7 @@ function App() {
 
   // Sync User Follows
   useEffect(() => {
-    if (!supabaseUser) {
+    if (!supabaseUser || !isConfigured) {
       setUserFollows([]);
       return;
     }
@@ -624,6 +707,10 @@ function App() {
 
   // Sync Videos from Supabase
   useEffect(() => {
+    if (!isConfigured) {
+      setVideos(MOCK_VIDEOS);
+      return;
+    }
     const fetchVideos = async () => {
       try {
         const { data, error } = await supabase
@@ -689,13 +776,38 @@ function App() {
   }, [currentView, isOverlayOpen]);
 
   const handleVideoUpload = async (videoData: { url: string; description: string; effect?: string; customEffectUrl?: string; audioUrl?: string; audioName?: string }) => {
-    if (!user || !supabaseUser) {
+    if (!user) {
       setShowAuthView(true);
       return;
     }
 
     setIsRefreshing(true);
     try {
+      if (!isConfigured) {
+        // Mock upload for demo mode
+        const mockNewVideo: Video = {
+          id: Date.now().toString(),
+          author: user.username || user.name,
+          authorId: user.id,
+          authorPhoto: user.avatar,
+          description: videoData.description,
+          url: videoData.url,
+          song: videoData.audioName || ('Original Sound - ' + user.name),
+          audioUrl: videoData.audioUrl || undefined,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          effect: videoData.effect,
+          isLiked: false,
+          isFollowed: false,
+          createdAt: new Date().toISOString()
+        };
+        setVideos(prev => [mockNewVideo, ...prev]);
+        setCurrentView('home');
+        setActiveVideoIndex(0);
+        return;
+      }
+      
       const newVideo = {
         author: user.username || user.name,
         author_id: supabaseUser.id,
@@ -728,13 +840,13 @@ function App() {
   };
 
   const earnCoins = async (amount: number, reason: string = 'bonus') => {
-    if (!supabaseUser) return;
-    
     // Optimistic update
-    setUser(prev => ({ ...prev, coins: prev.coins + amount }));
+    setUser(prev => prev ? ({ ...prev, coins: prev.coins + amount }) : null);
     setShowCoinToast(true);
     setTimeout(() => setShowCoinToast(false), 2000);
 
+    if (!supabaseUser || !isConfigured) return;
+    
     try {
       // Update backend
       await commandNexusService.earnCoins(supabaseUser.id, amount, reason);
@@ -750,11 +862,16 @@ function App() {
   };
 
   const handleSwap = async (amount: number, cryptoType: string) => {
-    if (!supabaseUser) return;
+    if (!user) return;
 
     // Optimistic update
-    setUser(prev => ({ ...prev, coins: prev.coins - amount }));
+    setUser(prev => prev ? ({ ...prev, coins: prev.coins - amount }) : null);
     
+    if (!supabaseUser || !isConfigured) {
+      alert(`Successfully swapped ${amount} utubechat Coins for ${cryptoType}! (Demo Mode)`);
+      return;
+    }
+
     try {
       // Update Supabase mirror
       await supabase
@@ -778,7 +895,14 @@ function App() {
   };
 
   const handleLike = async (videoId: string, isLiked: boolean) => {
-    if (!supabaseUser) return;
+    if (!user) return;
+
+    if (!supabaseUser || !isConfigured) {
+      // Just update local state
+      setVideos(prev => prev.map(v => v.id === videoId ? { ...v, isLiked: !isLiked, likes: isLiked ? v.likes - 1 : v.likes + 1 } : v));
+      if (!isLiked) earnCoins(5, 'Video Like Reward');
+      return;
+    }
 
     try {
       if (!isLiked) {
@@ -809,7 +933,14 @@ function App() {
   };
 
   const handleFollow = async (authorId: string, isFollowed: boolean) => {
-    if (!supabaseUser || authorId === supabaseUser.id) return;
+    if (!user || (supabaseUser && authorId === supabaseUser.id)) return;
+
+    if (!supabaseUser || !isConfigured) {
+      // Just update local state
+      setVideos(prev => prev.map(v => v.authorId === authorId ? { ...v, isFollowed: !isFollowed } : v));
+      if (!isFollowed) earnCoins(10, 'New Follow Reward');
+      return;
+    }
 
     try {
       if (!isFollowed) {
@@ -837,14 +968,32 @@ function App() {
   };
   const handleLogout = async () => {
     try {
-      await logout();
+      if (isConfigured) {
+        await logout();
+      }
+      // Also logout from custom server
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      
+      setSupabaseUser(null);
+      setUser(null);
       setIsMenuOpen(false);
       setCurrentView('home');
       setShowCoinToast(true);
       setTimeout(() => setShowCoinToast(false), 2000);
     } catch (error) {
       console.error('Logout error:', error);
+      // Force logout locally
+      setSupabaseUser(null);
+      setUser(null);
     }
+  };
+
+  const handleClearSession = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    // Clear cookies by calling logout
+    handleLogout();
+    window.location.reload();
   };
 
   if (!isAuthReady) {
@@ -865,7 +1014,7 @@ function App() {
         >
           <div className="w-24 h-24 bg-primary/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/20 overflow-hidden border border-primary/30">
             <img 
-              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png" 
               alt="utubechat Logo" 
               className="w-full h-full object-cover"
               style={{ filter: 'var(--logo-filter)' }}
@@ -930,6 +1079,14 @@ function App() {
             <span className="text-sm">Sign in with Email</span>
           </button>
 
+          <button 
+            onClick={handleClearSession}
+            className="w-full bg-transparent text-gray-600 font-bold py-2 rounded-2xl flex items-center justify-center gap-3 hover:text-gray-400 transition-all active:scale-95 text-[10px] uppercase tracking-widest"
+          >
+            <X size={14} />
+            <span>Trouble signing in? Clear Session</span>
+          </button>
+
           <p className="text-[10px] text-gray-600 px-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
@@ -948,112 +1105,184 @@ function App() {
     );
   }
 
-  const renderHome = () => (
-    <div className="h-full w-full flex bg-[#050505]">
-      {/* Left Sidebar (Desktop Only) */}
-      <div className="hidden lg:flex flex-col w-80 border-r border-[#9298a6] p-6 pt-20 gap-6">
-        <SidebarAds />
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
 
-        <div className="flex bg-gray-900 rounded-lg p-1">
-          <button className="flex-1 py-2 text-sm font-bold text-gray-400">Category</button>
-          <button className="flex-1 py-2 text-sm font-bold text-black bg-white rounded-md shadow-lg">Following</button>
-        </div>
+  const renderHome = () => {
+    const activeVideo = videos[activeVideoIndex];
 
-        <div className="bg-gray-900/50 rounded-xl p-4 border border-[#9298a6]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold">U</div>
-            <div>
-              <p className="text-sm font-bold text-white">@utubechat3</p>
-              <p className="text-[10px] text-gray-500">Be social. Get paid.</p>
-            </div>
+    return (
+      <div className="h-full w-full flex bg-[#050505]">
+        {/* Left Sidebar (Desktop Only) */}
+        <div className="hidden lg:flex flex-col w-80 border-r border-[#9298a6] p-6 pt-20 gap-6">
+          <SidebarAds />
+
+          <div className="flex bg-gray-900 rounded-lg p-1">
+            <button 
+              onClick={() => setActiveTab('foryou')}
+              className={`flex-1 py-2 text-sm font-bold transition-all rounded-md ${activeTab === 'foryou' ? 'text-black bg-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+            >
+              Category
+            </button>
+            <button 
+              onClick={() => setActiveTab('following')}
+              className={`flex-1 py-2 text-sm font-bold transition-all rounded-md ${activeTab === 'following' ? 'text-black bg-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+            >
+              Following
+            </button>
           </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Lord Yahusha Your Worthy Of It All i Exalt You Lord Yahusha
-          </p>
-          <div className="flex gap-4 mt-4 text-[10px] text-gray-500">
-            <span>0 views</span>
-            <span>0 likes</span>
-          </div>
-        </div>
 
-        {/* Ad Banner */}
-        <div className="mt-8">
-          <AdBanner type="sidebar" />
-        </div>
-      </div>
-
-      {/* Video Feed */}
-      <div 
-        ref={containerRef}
-        onScroll={handleScroll}
-        onClick={handleDoubleTap}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className="flex-1 h-[calc(100vh-4rem)] pt-16 overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black relative"
-      >
-        {videos.map((video, index) => (
-          <VideoCard 
-            key={video.id} 
-            video={video} 
-            isActive={index === activeVideoIndex && currentView === 'home'} 
-            isMuted={isMuted}
-            setIsMuted={setIsMuted}
-            isAutoScrollEnabled={isAutoScrollEnabled}
-            setIsAutoScrollEnabled={setIsAutoScrollEnabled}
-            onPrev={() => index > 0 && scrollToVideo(index - 1)}
-            onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
-            onLike={(isLiked) => handleLike(video.id, isLiked)}
-            onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
-            onMessageClick={handleMessageClick}
-            onPromoteClick={(videoId) => {
-              setSelectedAdVideoId(videoId);
-              setCurrentView('ad-center');
-            }}
-            onFollow={(authorId, isFollowed) => handleFollow(authorId, isFollowed)}
-            loop={!isAutoScrollEnabled}
-          />
-        ))}
-      </div>
-
-      {/* Right Sidebar (Desktop Only) */}
-      <AnimatePresence>
-        {isCommentsSidebarOpen && (
-          <motion.div 
-            initial={{ x: 320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 320, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="hidden xl:flex flex-col w-80 border-l border-[#9298a6] px-6 pt-20 pb-24 gap-6 bg-[#050505] z-40"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-white font-bold text-sm">Comments</h3>
-              <button 
-                onClick={() => setIsCommentsSidebarOpen(false)}
-                className="text-gray-500 hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-4 border border-[#9298a6] shrink-0">
-              <h3 className="text-white font-bold text-xs mb-4">Trending</h3>
-              <div className="space-y-4">
-                {['#faith', '#jesus', '#gulfport', '#dance'].map(tag => (
-                  <div key={tag} className="text-gray-400 text-[10px] hover:text-white cursor-pointer">
-                    {tag}
-                  </div>
-                ))}
+          <div className="bg-gray-900/50 rounded-xl p-4 border border-[#9298a6]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold">
+                {user?.name?.[0] || 'U'}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">
+                  @{user?.username?.startsWith('@') ? user.username.slice(1) : (user?.username || 'utubechat3')}
+                </p>
+                <p className="text-[10px] text-gray-500">Be social. Get paid.</p>
               </div>
             </div>
-
-            <div className="flex-1 bg-gray-900 rounded-xl p-4 border border-[#9298a6] overflow-hidden flex flex-col">
-              <Comments isSidebar />
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Lord Yahusha Your Worthy Of It All i Exalt You Lord Yahusha
+            </p>
+            <div className="flex gap-4 mt-4 text-[10px] text-gray-500">
+              <span>0 views</span>
+              <span>0 likes</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+          </div>
+
+          {/* Ad Banner */}
+          <div className="mt-8">
+            <AdBanner type="sidebar" />
+          </div>
+        </div>
+
+        {/* Video Feed */}
+        <div className="flex-1 h-full flex flex-col items-center justify-center bg-black overflow-hidden relative">
+          {/* THE SHAFT: 380px container locks EVERYTHING in place */}
+          <div className="relative w-full max-w-[380px] h-full flex flex-col pt-4 pb-20">
+            <div 
+              ref={containerRef}
+              onScroll={handleScroll}
+              onClick={handleDoubleTap}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="flex-1 h-full rounded-[2.5rem] border border-white/10 overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-zinc-900 relative shadow-2xl"
+            >
+              {videos.map((video, index) => (
+                <VideoCard 
+                  key={video.id} 
+                  video={video} 
+                  isActive={index === activeVideoIndex && currentView === 'home'} 
+                  isMuted={isMuted}
+                  setIsMuted={setIsMuted}
+                  isAutoScrollEnabled={isAutoScrollEnabled}
+                  setIsAutoScrollEnabled={setIsAutoScrollEnabled}
+                  onPrev={() => index > 0 && scrollToVideo(index - 1)}
+                  onNext={() => index < videos.length - 1 && scrollToVideo(index + 1)}
+                  onLike={(isLiked) => handleLike(video.id, isLiked)}
+                  onCommentClick={() => setIsCommentsSidebarOpen(!isCommentsSidebarOpen)}
+                  onMessageClick={handleMessageClick}
+                  onPromoteClick={(videoId) => {
+                    setSelectedAdVideoId(videoId);
+                    setCurrentView('ad-center');
+                  }}
+                  onFollow={(authorId, isFollowed) => handleFollow(authorId, isFollowed)}
+                  onMiniPlayer={(video) => setMiniPlayerVideo(video)}
+                  loop={!isAutoScrollEnabled}
+                />
+              ))}
+            </div>
+
+            {/* Navigation Arrows (Fixed to the RIGHT of the shaft) */}
+            <div className="hidden md:flex absolute -right-16 top-1/2 -translate-y-1/2 flex-col gap-5 z-[100]">
+               <button 
+                 onClick={(e) => { e.stopPropagation(); scrollToVideo(activeVideoIndex - 1); }} 
+                 disabled={activeVideoIndex === 0}
+                 className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav ${activeVideoIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+               >
+                 <ChevronUp size={24} strokeWidth={2.5} className="group-hover/nav:-translate-y-0.5 transition-transform" />
+               </button>
+               <button 
+                 onClick={(e) => { e.stopPropagation(); scrollToVideo(activeVideoIndex + 1); }} 
+                 disabled={activeVideoIndex === videos.length - 1}
+                 className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav ${activeVideoIndex === videos.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+               >
+                 <ChevronDown size={24} strokeWidth={2.5} className="group-hover/nav:translate-y-0.5 transition-transform" />
+               </button>
+            </div>
+          </div>
+
+          {/* 🚀 THE TIGHT NAVBAR: Locked directly under the video, same width */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[340px] h-16 bg-zinc-950/90 backdrop-blur-2xl rounded-2xl border border-white/5 flex items-center justify-center px-2 shadow-2xl z-50">
+            <div className="flex items-center justify-center gap-4 w-full">
+              <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center ${currentView === 'home' ? 'text-white' : 'text-zinc-500'}`}>
+                <Home size={20} /><span className="text-[8px] font-bold mt-1 uppercase">Home</span>
+              </button>
+              <button onClick={() => setCurrentView('discover')} className={`flex flex-col items-center ${currentView === 'discover' ? 'text-white' : 'text-zinc-500'}`}>
+                <Search size={20} /><span className="text-[8px] font-bold mt-1 uppercase">Discover</span>
+              </button>
+              <div 
+                onClick={() => setCurrentView('create')}
+                className="w-10 h-8 bg-white rounded-lg flex items-center justify-center text-black shadow-white/20 shadow-md cursor-pointer active:scale-95 transition-transform"
+              >
+                <Plus strokeWidth={3} size={20} />
+              </div>
+              <button onClick={() => setCurrentView('inbox')} className={`flex flex-col items-center ${currentView === 'inbox' ? 'text-white' : 'text-zinc-500'}`}>
+                <MessageCircle size={20} /><span className="text-[8px] font-bold mt-1 uppercase">Inbox</span>
+              </button>
+              <button onClick={() => setCurrentView('profile')} className={`flex flex-col items-center ${currentView === 'profile' ? 'text-white' : 'text-zinc-500'}`}>
+                <UserIcon size={20} /><span className="text-[8px] font-bold mt-1 uppercase">Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar (Desktop Only) */}
+        <AnimatePresence>
+          {isCommentsSidebarOpen && (
+            <motion.div 
+              initial={{ x: 320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 320, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="hidden xl:flex flex-col w-80 border-l border-[#9298a6] px-6 pt-20 pb-24 gap-6 bg-[#050505] z-40"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-white font-bold text-sm">Comments</h3>
+                <button 
+                  onClick={() => setIsCommentsSidebarOpen(false)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-4 border border-[#9298a6] shrink-0">
+                <h3 className="text-white font-bold text-xs mb-4">Trending</h3>
+                <div className="space-y-4">
+                  {['#faith', '#jesus', '#gulfport', '#dance'].map(tag => (
+                    <div key={tag} className="text-gray-400 text-[10px] hover:text-white cursor-pointer">
+                      {tag}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex-1 bg-gray-900 rounded-xl p-4 border border-[#9298a6] overflow-hidden flex flex-col">
+                <Comments isSidebar />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   const renderProfile = () => (
     <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
@@ -1062,7 +1291,30 @@ function App() {
           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         </div>
         <h2 className="text-xl font-bold">{user.name}</h2>
-        <p className="text-gray-400 text-sm mb-6">{user.username}</p>
+        <p className="text-gray-400 text-sm mb-4">{user.username}</p>
+        
+        {user.bio && (
+          <p className="text-center text-sm text-gray-300 max-w-xs mb-6 px-4 leading-relaxed">
+            {user.bio}
+          </p>
+        )}
+        
+        {(user.phone || user.location) && (
+          <div className="flex flex-col items-center gap-1 mb-6">
+            {user.phone && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Phone size={12} />
+                <span>{user.phone}</span>
+              </div>
+            )}
+            {user.location && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <MapPin size={12} />
+                <span>{user.location}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {user.socialLinks && (Object.values(user.socialLinks).some(link => !!link)) && (
           <div className="flex gap-4 mb-6">
@@ -1270,6 +1522,16 @@ function App() {
 
   return (
     <div className="relative h-screen w-full bg-black overflow-hidden font-sans select-none">
+      {/* Demo Mode Badge */}
+      {!isConfigured && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+          <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/30 text-amber-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl flex items-center gap-2">
+            <Zap size={12} fill="currentColor" />
+            <span>Demo Mode (Supabase Not Configured)</span>
+          </div>
+        </div>
+      )}
+
       {/* Pull to Refresh Indicator */}
       <div 
         className="fixed top-0 left-0 right-0 flex justify-center z-50 transition-all duration-200 pointer-events-none"
@@ -1325,12 +1587,21 @@ function App() {
               className="absolute top-0 left-0 bottom-0 w-4/5 max-w-xs bg-gray-900 z-[70] p-6 shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-10">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800 cursor-pointer" onClick={() => { setCurrentView('settings'); setIsMenuOpen(false); }}>
                   <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
-                <div>
-                  <h3 className="text-white font-bold">{user.name}</h3>
-                  <p className="text-gray-400 text-xs">{user.username}</p>
+                <div className="flex-1">
+                  <h3 className="text-white font-bold cursor-pointer" onClick={() => { setCurrentView('settings'); setIsMenuOpen(false); }}>{user.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <p className="text-gray-400 text-xs">{user.username}</p>
+                    <span className="text-gray-600">•</span>
+                    <button 
+                      onClick={() => { setIsAboutUsOpen(true); setIsMenuOpen(false); }}
+                      className="text-primary text-[10px] font-bold uppercase tracking-widest hover:underline"
+                    >
+                      About
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1402,6 +1673,16 @@ function App() {
                   <div className="flex items-center gap-3">
                     <Heart size={20} className="text-pink-500" />
                     <span>Our Mission</span>
+                  </div>
+                  <ChevronRight size={16} className="text-gray-600" />
+                </button>
+                <button 
+                  onClick={() => { setIsAboutUsOpen(true); setIsMenuOpen(false); }}
+                  className="flex items-center justify-between text-white p-3 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Info size={20} className="text-primary" />
+                    <span>About Us</span>
                   </div>
                   <ChevronRight size={16} className="text-gray-600" />
                 </button>
@@ -1490,22 +1771,30 @@ function App() {
 
       {/* Top Header (Desktop Only) */}
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-[#050505] border-b border-[#9298a6] z-[55] items-center px-6 justify-between">
-        <div 
-          className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => {
-            setCurrentView('home');
-            setActiveVideoIndex(0);
-            if (containerRef.current) {
-              containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
-        >
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all active:scale-95 text-white flex items-center justify-center border border-white/20"
+            title="Open Menu"
+          >
+            <HamburgerIcon size={28} color="#ffffff" />
+          </button>
+          <div 
+            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => {
+              setCurrentView('home');
+              setActiveVideoIndex(0);
+              if (containerRef.current) {
+                containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
           <div 
             className="w-8 h-8 rounded-full bg-primary/20 bg-center bg-no-repeat bg-cover overflow-hidden flex items-center justify-center border border-primary/30"
-            style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png')`, backgroundBlendMode: 'overlay' }}
+            style={{ backgroundImage: `url('https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png')`, backgroundBlendMode: 'overlay' }}
           >
             <img 
-              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/63795101-5262-429a-886d-31b39247161f.png" 
+              src="https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png" 
               alt="utubechat Logo" 
               className="w-full h-full object-cover"
               style={{ filter: 'var(--logo-filter)' }}
@@ -1619,28 +1908,46 @@ function App() {
         )}
       </AnimatePresence>
 
+      <SidebarMenu 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        user={user}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onViewChange={(view) => {
+          if (view === 'following') {
+            setCurrentView('home');
+            setActiveTab('following');
+          } else if (view === 'friends') {
+            setCurrentView('home');
+            setActiveTab('following'); // Placeholder for friends
+          } else if (view === 'live') {
+            setIsLiveOpen(true);
+          } else if (view === 'messages') {
+            setIsMessagesOpen(true);
+          } else if (view === 'home') {
+            setCurrentView('home');
+            setActiveTab('foryou');
+          } else {
+            setCurrentView(view as any);
+          }
+        }}
+      />
+
+      <div className="lg:hidden">
+        <TopNav 
+          activeTab={currentView === 'home' ? activeTab : undefined} 
+          onTabChange={currentView === 'home' ? setActiveTab : undefined} 
+          onLiveClick={() => setIsLiveOpen(true)}
+          onSearchClick={() => setCurrentView('discover')}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
+      </div>
+
       {/* Main Content */}
-      <div className="h-full w-full pt-0 lg:pt-16">
-        {currentView === 'home' && (
-          <>
-            <TopNav 
-              activeTab={activeTab} 
-              onTabChange={setActiveTab} 
-              onLiveClick={() => setIsLiveOpen(true)}
-              onSearchClick={() => {
-                setCurrentView('discover');
-              }}
-              onHomeClick={() => {
-                setCurrentView('home');
-                setActiveVideoIndex(0);
-                if (containerRef.current) {
-                  containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            />
-            {renderHome()}
-          </>
-        )}
+      <div className="h-screen w-full pt-0 lg:pt-16 overflow-hidden relative z-0">
+        {currentView === 'home' && renderHome()}
         {currentView === 'profile' && renderProfile()}
         {currentView === 'shop' && renderShop()}
         {currentView === 'create' && (
@@ -1687,6 +1994,7 @@ function App() {
               onClose={() => setCurrentView('home')} 
               user={user} 
               onTopUp={() => setIsTopUpModalOpen(true)}
+              onAboutUs={() => setIsAboutUsOpen(true)}
               initialSubView={initialSettingsSubView}
               currentTheme={currentTheme}
               onThemeChange={setCurrentTheme}
@@ -1933,6 +2241,15 @@ function App() {
         {isMissionOpen && (
           <MissionView 
             onClose={() => setIsMissionOpen(false)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* About Us View Overlay */}
+      <AnimatePresence>
+        {isAboutUsOpen && (
+          <AboutUsView 
+            onClose={() => setIsAboutUsOpen(false)} 
           />
         )}
       </AnimatePresence>

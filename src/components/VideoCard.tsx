@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronUp, ChevronDown, MoreHorizontal, X, Send, User, Maximize2, Minimize2, Volume2, VolumeX, Languages, Mail, Play, AlertCircle, Heart, Bookmark, ThumbsDown, CheckCircle } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, X, Send, User, Maximize2, Minimize2, Volume2, VolumeX, Languages, Mail, Play, AlertCircle, Heart, Bookmark, ThumbsDown, CheckCircle } from 'lucide-react';
 import { Video } from '../types';
 import { Comments } from './Comments';
 import { ShareModal } from './ShareModal';
@@ -197,12 +197,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     setPlaybackRate(rates[nextIndex]);
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
-
   const handleTimeUpdate = () => {
     if (videoRef.current && !isDraggingProgress) {
       const currentProgress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -366,9 +360,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             </div>
           )}
 
-          {/* 🚀 THE ACTION STACK (INSIDE FRAME) */}
+          {/* ACTION BUTTONS: Welded to the bottom-right of the VIDEO */}
           {!isFullscreen && (
-            <div className="absolute right-3 bottom-8 z-[100]">
+            <div className="absolute right-4 bottom-8 z-50">
               <VideoActionStack 
                 authorPhoto={video.authorPhoto}
                 likes={likes}
@@ -378,35 +372,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({
                 isFollowed={isFollowed}
                 isBookmarked={isBookmarked}
                 onLike={toggleLike}
-                onFollow={toggleFollow}
-                onComment={() => { setShowComments(true); onCommentClick?.(); }}
+                onFollow={(e) => toggleFollow(e as any)}
+                onComment={() => {
+                  setShowComments(true);
+                  onCommentClick?.();
+                }}
                 onShare={() => setShowShareModal(true)}
                 onBookmark={() => setIsBookmarked(!isBookmarked)}
                 onMore={() => setShowMoreMenu(!showMoreMenu)}
-                onPromote={onPromoteClick ? () => onPromoteClick(video.id) : undefined}
-                formatNumber={formatNumber}
+                onPromote={() => onPromoteClick?.(video.id)}
+                formatNumber={(num) => num >= 1000 ? (num / 1000).toFixed(1) + 'K' : num.toString()}
               />
             </div>
           )}
         </div>
-
-        {/* NAV ARROWS (OUTSIDE FRAME - RIGHT - DESKTOP ONLY) */}
-        {!isFullscreen && (
-          <div className="hidden md:flex absolute left-[calc(100%+1rem)] bottom-8 flex-col gap-5 z-50">
-             <button 
-               onClick={(e) => { e.stopPropagation(); onPrev?.(); }} 
-               className="w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav"
-             >
-               <ChevronUp size={24} strokeWidth={2.5} className="group-hover/nav:-translate-y-0.5 transition-transform" />
-             </button>
-             <button 
-               onClick={(e) => { e.stopPropagation(); onNext?.(); }} 
-               className="w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/30 transition-all shadow-2xl cursor-pointer group/nav"
-             >
-               <ChevronDown size={24} strokeWidth={2.5} className="group-hover/nav:translate-y-0.5 transition-transform" />
-             </button>
-          </div>
-        )}
       </div>
 
       {/* More Menu Overlay */}

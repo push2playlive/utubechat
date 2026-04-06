@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
     display_name TEXT,
     email TEXT,
+    phone TEXT,
+    location TEXT,
     photo_url TEXT,
     username TEXT UNIQUE,
     role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'guest')),
@@ -29,6 +31,8 @@ CREATE TABLE IF NOT EXISTS public.users (
 CREATE TABLE IF NOT EXISTS public.public_profiles (
     id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL PRIMARY KEY,
     display_name TEXT,
+    phone TEXT,
+    location TEXT,
     photo_url TEXT,
     username TEXT UNIQUE,
     role TEXT DEFAULT 'user',
@@ -127,7 +131,12 @@ CREATE TABLE IF NOT EXISTS public.system_config (
 CREATE TABLE IF NOT EXISTS public.chats (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     participants UUID[] NOT NULL,
+    participant_names TEXT[],
+    participant_photos TEXT[],
     last_message TEXT,
+    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    other_user_name TEXT,
+    other_user_photo TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -135,9 +144,15 @@ CREATE TABLE IF NOT EXISTS public.messages (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     chat_id UUID REFERENCES public.chats(id) ON DELETE CASCADE NOT NULL,
     sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    sender_name TEXT,
     text TEXT,
+    type TEXT DEFAULT 'text' CHECK (type IN ('text', 'gif', 'image')),
     image_url TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    reply_to JSONB,
+    is_read BOOLEAN DEFAULT false,
+    is_edited BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
 -- 10. Ad Campaigns

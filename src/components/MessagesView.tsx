@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock, Pencil, Edit3, MessageSquare, Plus, MapPin, Copy, Forward } from 'lucide-react';
+import { X, Search, Send, Camera, Image as ImageIcon, Smile, MoreVertical, ChevronLeft, UserPlus, Trash2, Reply, Gift, Bell, Lock, Pencil, Edit3, MessageSquare, Plus, MapPin, Copy, Forward, Megaphone, CheckCircle } from 'lucide-react';
 import { supabase, handleSupabaseError, OperationType } from '../supabase';
+import { HamburgerIcon } from './Logos';
 
 interface MessagesViewProps {
   onClose: () => void;
@@ -24,6 +25,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
+  const [isBroadcastMode, setIsBroadcastMode] = useState(false);
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -34,6 +37,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     // In a real app, this would open a user selector
     showPushNotification('Forwarding is coming soon!');
   };
+  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -155,7 +159,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
 
   useEffect(() => {
     if (initialUser && chats.length > 0) {
-      const existingChat = chats.find(c => c.otherUserName === initialUser);
+      // Try to find by ID first, then by username
+      const existingChat = chats.find(c => c.id === initialUser || c.otherUserName === initialUser);
       if (existingChat) {
         setActiveChat(existingChat.id);
       }
@@ -383,8 +388,18 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // If broadcast mode, add to selected users instead of starting chat
+    if (isBroadcastMode) {
+      if (selectedUsers.find(u => u.uid === otherUser.uid)) {
+        setSelectedUsers(prev => prev.filter(u => u.uid !== otherUser.uid));
+      } else {
+        setSelectedUsers(prev => [...prev, otherUser]);
+      }
+      return;
+    }
+
     // Check if chat already exists
-    const existingChat = chats.find(c => c.participants.includes(otherUser.uid));
+    const existingChat = chats.find(c => c.participants.length === 2 && c.participants.includes(otherUser.uid));
     if (existingChat) {
       setActiveChat(existingChat.id);
       setIsNewChatOpen(false);
@@ -415,6 +430,64 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
     } catch (error) {
       handleSupabaseError(error, OperationType.WRITE, 'chats');
     }
+  };
+
+  const handleSendBroadcast = async () => {
+    if (selectedUsers.length === 0 || !messageText.trim()) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      for (const targetUser of selectedUsers) {
+        // Find or create chat with each user
+        let chatId;
+        const existingChat = chats.find(c => c.participants.length === 2 && c.participants.includes(targetUser.uid));
+        
+        if (existingChat) {
+          chatId = existingChat.id;
+        } else {
+          const { data: newChat, error: chatError } = await supabase
+            .from('chats')
+            .insert({
+              participants: [user.id, targetUser.uid],
+              participant_names: [user.user_metadata.display_name || 'User', targetUser.displayName],
+              participant_photos: [user.user_metadata.avatar_url || '', targetUser.photoURL],
+              last_message: messageText,
+              last_message_at: new Date().toISOString(),
+              other_user_name: targetUser.displayName,
+              other_user_photo: targetUser.photoURL
+            })
+            .select()
+            .single();
+          
+          if (chatError) throw chatError;
+          chatId = newChat.id;
+        }
+
+        // Send message
+        await supabase.from('messages').insert({
+          chat_id: chatId,
+          text: messageText,
+          sender_id: user.id,
+          sender_name: user.user_metadata.display_name || 'User',
+          type: 'text'
+        });
+      }
+
+      showPushNotification(`Message sent to ${selectedUsers.length} people`);
+      setIsNewChatOpen(false);
+      setIsBroadcastMode(false);
+      setSelectedUsers([]);
+      setMessageText('');
+    } catch (error) {
+      handleSupabaseError(error, OperationType.WRITE, 'broadcast');
+    }
+  };
+
+  const applyFormatting = (format: 'bold' | 'italic') => {
+    const tag = format === 'bold' ? '**' : '*';
+    setMessageText(prev => `${tag}${prev}${tag}`);
   };
 
   const filteredChats = chats.filter(chat => 
@@ -466,10 +539,30 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
               className="flex-1 flex flex-col"
             >
               <div className="p-6 flex items-center justify-between border-b border-[#9298a6]">
-                <h1 className="text-xl font-bold text-white">Messages</h1>
+                <div className="flex items-center gap-4">
+                  <button 
+                    className="w-10 h-10 rounded-full hover:bg-white/10 transition-all active:scale-90 flex items-center justify-center overflow-hidden" 
+                  >
+                    <HamburgerIcon size={24} color="white" />
+                  </button>
+                  <h1 className="text-xl font-bold text-white">Messages</h1>
+                </div>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => setIsNewChatOpen(true)}
+                    onClick={() => {
+                      setIsNewChatOpen(true);
+                      setIsBroadcastMode(true);
+                    }}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg shadow-purple-500/20 transition-all active:scale-95"
+                  >
+                    <Megaphone size={18} />
+                    <span>Broadcast</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsNewChatOpen(true);
+                      setIsBroadcastMode(false);
+                    }}
                     className="flex items-center gap-2 bg-pink-500 hover:bg-pink-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg shadow-pink-500/20 transition-all active:scale-95"
                   >
                     <UserPlus size={18} />
@@ -633,48 +726,68 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                         Replying to: {msg.replyTo.text}
                       </div>
                     )}
-                    <div className="flex items-center gap-2 max-w-[85%]">
-                      {/* Message Tools - Always visible on hover, but also add a small indicator */}
+                    <div className="flex items-center gap-2 max-w-[85%] relative">
+                      {/* Message Tools - Improved for Mobile & Desktop */}
                       {msg.senderId === currentUserId && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 rounded-full px-2 py-1 shadow-xl border border-white/20 ml-2">
+                        <div className="flex items-center gap-1 opacity-100 bg-black/60 backdrop-blur-md rounded-full px-2 py-1 shadow-xl border border-white/20 ml-2 order-2">
                           <button 
                             onClick={() => setReplyingTo(msg)} 
-                            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                            className="p-2 text-gray-300 hover:text-white transition-colors"
                             title="Reply"
                           >
-                            <Reply size={14} />
+                            <Reply size={16} />
                           </button>
                           <button 
                             onClick={() => handleEditMessage(msg)} 
-                            className="p-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                            className="p-2 text-blue-400 hover:text-blue-300 transition-colors"
                             title="Edit Message"
                           >
-                            <Pencil size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleCopyText(msg.text)} 
-                            className="p-1.5 text-green-400 hover:text-green-300 transition-colors"
-                            title="Copy Text"
-                          >
-                            <Copy size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleForwardMessage(msg)} 
-                            className="p-1.5 text-purple-400 hover:text-purple-300 transition-colors"
-                            title="Forward"
-                          >
-                            <Forward size={14} />
+                            <Edit3 size={16} />
                           </button>
                           <button 
                             onClick={() => handleDeleteMessage(msg.id)} 
-                            className="p-1.5 text-red-500 hover:text-red-400 transition-colors"
+                            className="p-2 text-red-500 hover:text-red-400 transition-colors"
                             title="Delete Message"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)}
+                            className="p-2 text-gray-300 hover:text-white transition-colors"
+                          >
+                            <MoreVertical size={18} />
                           </button>
                         </div>
                       )}
-                      <div className={`p-3 rounded-2xl text-sm ${msg.senderId === currentUserId ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+
+                      {/* Expanded Menu */}
+                      <AnimatePresence>
+                        {activeMessageMenu === msg.id && (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="absolute bottom-full right-0 mb-2 bg-gray-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden min-w-[120px]"
+                          >
+                            <button 
+                              onClick={() => { handleCopyText(msg.text); setActiveMessageMenu(null); }} 
+                              className="w-full p-2.5 flex items-center gap-3 hover:bg-white/5 text-left text-xs text-white"
+                            >
+                              <Copy size={14} className="text-green-400" />
+                              Copy
+                            </button>
+                            <button 
+                              onClick={() => { handleForwardMessage(msg); setActiveMessageMenu(null); }} 
+                              className="w-full p-2.5 flex items-center gap-3 hover:bg-white/5 text-left text-xs text-white"
+                            >
+                              <Forward size={14} className="text-purple-400" />
+                              Forward
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div className={`p-3 rounded-2xl text-sm order-1 ${msg.senderId === currentUserId ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                         {msg.type === 'gif' ? (
                           <img src={msg.text} alt="GIF" className="rounded-lg max-w-[200px]" referrerPolicy="no-referrer" />
                         ) : msg.type === 'image' ? (
@@ -739,6 +852,24 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
               )}
 
               <form onSubmit={handleSendMessage} className="p-4 bg-black/20 border-t border-[#9298a6] relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <button 
+                    type="button"
+                    onClick={() => applyFormatting('bold')}
+                    className="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-white font-bold hover:bg-white/10 transition-colors"
+                    title="Bold"
+                  >
+                    B
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => applyFormatting('italic')}
+                    className="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-white italic hover:bg-white/10 transition-colors"
+                    title="Italic"
+                  >
+                    I
+                  </button>
+                </div>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -847,14 +978,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     <Plus size={24} />
                   </button>
                   
-                  {/* Direct Image Upload Button for visibility */}
                   <button 
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="p-2 text-gray-400 hover:text-white transition-colors"
                     title="Upload Image"
                   >
-                    <Camera size={24} />
+                    <ImageIcon size={24} className="text-blue-400" />
                   </button>
 
                   <button 
@@ -914,10 +1044,31 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                 className="bg-gray-900 w-full max-w-sm rounded-3xl border border-[#9298a6] overflow-hidden"
               >
                 <div className="p-6 border-b border-[#9298a6] flex items-center justify-between">
-                  <h3 className="text-white font-bold">New Message</h3>
-                  <button onClick={() => setIsNewChatOpen(false)} className="text-gray-500"><X size={20} /></button>
+                  <h3 className="text-white font-bold">{isBroadcastMode ? 'Broadcast Message' : 'New Message'}</h3>
+                  <button 
+                    onClick={() => {
+                      setIsNewChatOpen(false);
+                      setIsBroadcastMode(false);
+                      setSelectedUsers([]);
+                    }} 
+                    className="text-gray-500 hover:text-white transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-                <div className="p-4 border-b border-[#9298a6]">
+                <div className="p-4 border-b border-[#9298a6] space-y-3">
+                  {isBroadcastMode && selectedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedUsers.map(u => (
+                        <div key={u.uid} className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border border-purple-500/30">
+                          {u.displayName}
+                          <button onClick={() => setSelectedUsers(prev => prev.filter(user => user.uid !== u.uid))}>
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="bg-white/5 rounded-xl px-4 py-2 flex items-center gap-3 border border-[#9298a6]">
                     <Search size={16} className="text-gray-500" />
                     <input 
@@ -929,22 +1080,52 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ onClose, initialUser
                     />
                   </div>
                 </div>
-                  <div className="p-4 space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide">
-                    {availableUsers.length > 0 ? (
-                      availableUsers.map(user => (
+                <div className="p-4 space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide">
+                  {availableUsers.length > 0 ? (
+                    availableUsers.map(user => {
+                      const isSelected = selectedUsers.find(u => u.uid === user.uid);
+                      return (
                         <button 
                           key={user.uid}
                           onClick={() => handleStartNewChat(user)}
-                          className="w-full p-3 flex items-center gap-3 hover:bg-white/5 rounded-xl transition-colors text-left"
+                          className={`w-full p-3 flex items-center gap-3 rounded-xl transition-all text-left border ${isSelected ? 'bg-purple-500/10 border-purple-500/50' : 'hover:bg-white/5 border-transparent'}`}
                         >
-                          <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
-                          <span className="text-white text-sm font-medium">{user.displayName}</span>
+                          <div className="relative">
+                            <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                            {isSelected && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center border border-gray-900">
+                                <CheckCircle size={10} className="text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-sm font-medium ${isSelected ? 'text-purple-400' : 'text-white'}`}>{user.displayName}</span>
                         </button>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 text-center py-4 text-sm">No users found</p>
-                    )}
+                      );
+                    })
+                  ) : (
+                    <p className="text-gray-500 text-center py-4 text-sm">No users found</p>
+                  )}
+                </div>
+                {isBroadcastMode && selectedUsers.length > 0 && (
+                  <div className="p-4 bg-black/20 border-t border-[#9298a6]">
+                    <div className="mb-3">
+                      <textarea 
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        placeholder="Type your broadcast message..."
+                        className="w-full bg-white/5 border border-[#9298a6] rounded-xl p-3 text-white text-sm outline-none focus:border-purple-500 transition-colors resize-none h-20"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleSendBroadcast}
+                      disabled={!messageText.trim()}
+                      className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Send size={18} />
+                      <span>Send to {selectedUsers.length} People</span>
+                    </button>
                   </div>
+                )}
               </motion.div>
             </motion.div>
           )}

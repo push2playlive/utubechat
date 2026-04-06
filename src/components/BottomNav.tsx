@@ -19,7 +19,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange 
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-16 border-t border-gray-800 bg-black flex justify-around items-center z-50">
+    <div className="fixed bottom-0 left-0 right-0 h-16 border-t border-gray-800 bg-black flex justify-center items-center gap-2 sm:gap-4 z-50">
       {navItems.map((item) => {
         const isActive = currentView === item.view;
         const isCreate = item.view === 'create';

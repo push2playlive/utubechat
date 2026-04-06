@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin } from 'lucide-react';
+import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin, Palette, Info } from 'lucide-react';
 import { supabase, handleSupabaseError, OperationType } from '../supabase';
 import { UtubechatCoin } from './UtubechatCoin';
+import { UtubeChatLogo } from './Logos';
 
 interface SettingsViewProps {
   onClose: () => void;
   user: any;
   onTopUp?: () => void;
+  onAboutUs?: () => void;
   initialSubView?: SettingsSubView;
   currentTheme?: string;
   onThemeChange?: (theme: string) => void;
@@ -50,7 +52,7 @@ const SETTINGS_GROUPS = [
   }
 ];
 
-export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', currentTheme = 'red', onThemeChange }: SettingsViewProps) {
+export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView = 'main', currentTheme = 'red', onThemeChange }: SettingsViewProps) {
   const [subView, setSubView] = useState<SettingsSubView>(initialSubView);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -59,13 +61,32 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
   const [displayName, setDisplayName] = useState(user.name);
   const [avatar, setAvatar] = useState(user.avatar);
   const [email, setEmail] = useState(user.email || '');
-  const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('');
-  const [walletAddress, setWalletAddress] = useState(user.wallet_address || '');
+  const [phone, setPhone] = useState(user.phone || '');
+  const [location, setLocation] = useState(user.location || '');
+  const [bio, setBio] = useState(user.bio || '');
+  const [walletAddress, setWalletAddress] = useState(user.walletAddress || '');
   const [tiktok, setTiktok] = useState(user.socialLinks?.tiktok || '');
   const [youtube, setYoutube] = useState(user.socialLinks?.youtube || '');
   const [facebook, setFacebook] = useState(user.socialLinks?.facebook || '');
   const [instagram, setInstagram] = useState(user.socialLinks?.instagram || '');
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  // Sync local state with user prop if it updates
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.name || '');
+      setAvatar(user.avatar || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setLocation(user.location || '');
+      setBio(user.bio || '');
+      setWalletAddress(user.walletAddress || '');
+      setTiktok(user.socialLinks?.tiktok || '');
+      setYoutube(user.socialLinks?.youtube || '');
+      setFacebook(user.socialLinks?.facebook || '');
+      setInstagram(user.socialLinks?.instagram || '');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user.id) return;
@@ -118,6 +139,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
           email,
           phone,
           location,
+          bio,
           wallet_address: walletAddress,
           tiktok_url: tiktok,
           youtube_url: youtube,
@@ -135,6 +157,9 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
         .update({
           display_name: displayName,
           photo_url: avatar,
+          phone,
+          location,
+          bio,
           tiktok_url: tiktok,
           youtube_url: youtube,
           facebook_url: facebook,
@@ -146,7 +171,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
-      handleSupabaseError(error, OperationType.WRITE, `users/${user.id}`);
+      await handleSupabaseError(error, OperationType.WRITE, `users/${user.id}`);
     } finally {
       setIsSaving(false);
     }
@@ -201,7 +226,11 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
               <button
                 key={j}
                 onClick={() => {
-                  if (['profile', 'notifications', 'security', 'privacy', 'payments', 'privacy-policy', 'blocked', 'appearance', 'language', 'help', 'about'].includes(item.id)) {
+                  if (item.id === 'about' && onAboutUs) {
+                    onAboutUs();
+                    return;
+                  }
+                  if (['profile', 'notifications', 'security', 'privacy', 'payments', 'privacy-policy', 'blocked', 'appearance', 'language', 'help'].includes(item.id)) {
                     setSubView(item.id as SettingsSubView);
                   }
                 }}
@@ -284,6 +313,20 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
               value={displayName} 
               onChange={(e) => setDisplayName(e.target.value)}
               className="bg-transparent text-white text-sm outline-none flex-1" 
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">Bio</label>
+          <div className="bg-gray-900/50 rounded-2xl border border-[#9298a6] p-4 flex items-start gap-3">
+            <HelpCircle size={18} className="text-gray-500 mt-1" />
+            <textarea 
+              value={bio} 
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell us about yourself..."
+              rows={3}
+              className="bg-transparent text-white text-sm outline-none flex-1 resize-none" 
             />
           </div>
         </div>
@@ -404,6 +447,14 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
       </div>
 
       <button 
+        onClick={onAboutUs}
+        className="w-full bg-white/5 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-white/10 transition-colors border border-white/10"
+      >
+        <Info size={20} className="text-primary" />
+        <span>About UtubeChat</span>
+      </button>
+
+      <button 
         onClick={handleSave}
         disabled={isSaving}
         className="w-full bg-amber-500 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-amber-400 transition-colors disabled:opacity-50"
@@ -461,7 +512,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
         <h3 className="text-white font-bold mb-4">Theme Color</h3>
         <p className="text-xs text-gray-500 mb-6">Choose a color for your logo and app highlights.</p>
         
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
           {[
             { id: 'red', color: '#ef4444', name: 'Red' },
             { id: 'blue', color: '#3b82f6', name: 'Blue' },
@@ -471,6 +522,7 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
             { id: 'cyan', color: '#06b6d4', name: 'Cyan' },
             { id: 'yellow', color: '#eab308', name: 'Yellow' },
             { id: 'amber', color: '#f59e0b', name: 'Amber' },
+            { id: 'purple', color: '#8b5cf6', name: 'Purple' },
           ].map((theme) => (
             <button
               key={theme.id}
@@ -478,11 +530,14 @@ export function SettingsView({ onClose, user, onTopUp, initialSubView = 'main', 
               className={`group flex flex-col items-center gap-2 p-2 rounded-2xl transition-all ${currentTheme === theme.id ? 'bg-white/10 ring-2 ring-primary' : 'hover:bg-white/5'}`}
             >
               <div 
-                className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center relative overflow-hidden"
-                style={{ backgroundColor: theme.color }}
+                className="w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center relative overflow-hidden bg-gray-800 border border-white/10"
               >
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-white/20" />
-                {currentTheme === theme.id && <Check size={20} className="text-white relative z-10" />}
+                <UtubeChatLogo size={32} color={theme.color} className="relative z-10" />
+                {currentTheme === theme.id && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center z-20">
+                    <Check size={24} className="text-white" />
+                  </div>
+                )}
               </div>
               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{theme.name}</span>
             </button>
