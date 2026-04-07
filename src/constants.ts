@@ -139,6 +139,8 @@ export const CURRENT_USER: User = {
   following: 0,
   likes: 0,
   avatar: 'https://picsum.photos/seed/guest/200/200',
+  badge: 'white',
+  tier: 'public'
 };
 
 export const MOCK_USERS: User[] = [
@@ -153,6 +155,8 @@ export const MOCK_USERS: User[] = [
     following: 10,
     likes: 2500000,
     avatar: 'https://storage.googleapis.com/static.antigravity.ai/projects/da0dac2b-0dab-4c31-ba2e-02ca2e926ce4/attachments/8d578964-167e-4054-972f-53748280621b.png',
+    badge: 'purple',
+    tier: 'elite'
   },
   {
     id: 'user_3',
@@ -164,6 +168,8 @@ export const MOCK_USERS: User[] = [
     following: 5,
     likes: 1800000,
     avatar: 'https://picsum.photos/seed/utubechat/200/200',
+    badge: 'purple',
+    tier: 'elite'
   },
   {
     id: 'user_4',
@@ -175,6 +181,8 @@ export const MOCK_USERS: User[] = [
     following: 200,
     likes: 45000,
     avatar: 'https://picsum.photos/seed/neon/200/200',
+    badge: 'green',
+    tier: 'learner'
   },
   {
     id: 'user_5',
@@ -186,6 +194,8 @@ export const MOCK_USERS: User[] = [
     following: 150,
     likes: 12000,
     avatar: 'https://picsum.photos/seed/nature/200/200',
+    badge: 'cyan',
+    tier: 'pro'
   }
 ];
 

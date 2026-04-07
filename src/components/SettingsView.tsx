@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Share2, Smartphone, Zap, Eye, Lock, ArrowLeft, Camera, Check, Mail, Phone, MapPin, Palette, Info } from 'lucide-react';
-import { supabase, handleSupabaseError, OperationType } from '../supabase';
+import { supabase, handleSupabaseError, OperationType, isConfigured } from '../supabase';
 import { UtubechatCoin } from './UtubechatCoin';
 import { UtubeChatLogo } from './Logos';
 
 interface SettingsViewProps {
   onClose: () => void;
   user: any;
+  onUpdateUser?: (updatedUser: any) => void;
   onTopUp?: () => void;
   onAboutUs?: () => void;
   initialSubView?: SettingsSubView;
@@ -52,7 +53,7 @@ const SETTINGS_GROUPS = [
   }
 ];
 
-export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView = 'main', currentTheme = 'red', onThemeChange }: SettingsViewProps) {
+export function SettingsView({ onClose, user, onUpdateUser, onTopUp, onAboutUs, initialSubView = 'main', currentTheme = 'red', onThemeChange }: SettingsViewProps) {
   const [subView, setSubView] = useState<SettingsSubView>(initialSubView);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -130,48 +131,84 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
   const handleSave = async () => {
     if (!user.id) return;
     setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          display_name: displayName,
-          photo_url: avatar,
-          email,
-          phone,
-          location,
-          bio,
-          wallet_address: walletAddress,
-          tiktok_url: tiktok,
-          youtube_url: youtube,
-          facebook_url: facebook,
-          instagram_url: instagram,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+    
+    const updatedUserData = {
+      ...user,
+      name: displayName,
+      avatar: avatar,
+      email,
+      phone,
+      location,
+      bio,
+      walletAddress: walletAddress,
+      socialLinks: {
+        ...user.socialLinks,
+        tiktok,
+        youtube,
+        facebook,
+        instagram
+      }
+    };
 
-      if (error) throw error;
+    try {
+      if (isConfigured) {
+        const { error } = await supabase
+          .from('users')
+          .update({
+            display_name: displayName,
+            photo_url: avatar,
+            email,
+            phone,
+            location,
+            bio,
+            wallet_address: walletAddress,
+            tiktok_url: tiktok,
+            youtube_url: youtube,
+            facebook_url: facebook,
+            instagram_url: instagram,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+        
+        // Also update public profile
+        await supabase
+          .from('public_profiles')
+          .update({
+            display_name: displayName,
+            photo_url: avatar,
+            phone,
+            location,
+            bio,
+            tiktok_url: tiktok,
+            youtube_url: youtube,
+            facebook_url: facebook,
+            instagram_url: instagram,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      } else {
+        // In demo mode, we just simulate a delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
       
-      // Also update public profile
-      await supabase
-        .from('public_profiles')
-        .update({
-          display_name: displayName,
-          photo_url: avatar,
-          phone,
-          location,
-          bio,
-          tiktok_url: tiktok,
-          youtube_url: youtube,
-          facebook_url: facebook,
-          instagram_url: instagram,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+      // Update local state in App.tsx
+      if (onUpdateUser) {
+        onUpdateUser(updatedUserData);
+      }
       
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setSubView('main'); // Go back to main settings after save
+      }, 1500);
     } catch (error) {
-      await handleSupabaseError(error, OperationType.WRITE, `users/${user.id}`);
+      if (isConfigured) {
+        await handleSupabaseError(error, OperationType.WRITE, `users/${user.id}`);
+      } else {
+        console.error('Demo mode save error:', error);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -214,7 +251,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex-1 overflow-y-auto p-4 space-y-8 scrollbar-hide"
+      className="flex-1 overflow-y-auto p-4 pb-32 space-y-8 scrollbar-hide"
     >
       {SETTINGS_GROUPS.map((group, i) => (
         <div key={i}>
@@ -280,7 +317,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide"
+      className="flex-1 overflow-y-auto p-4 pb-32 space-y-6 scrollbar-hide"
     >
       <div className="flex flex-col items-center gap-4 py-6">
         <div className="relative">
@@ -476,7 +513,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide"
+      className="flex-1 overflow-y-auto p-4 pb-32 space-y-6 scrollbar-hide"
     >
       <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] overflow-hidden">
         {[
@@ -506,7 +543,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide"
+      className="flex-1 overflow-y-auto p-4 pb-32 space-y-6 scrollbar-hide"
     >
       <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6">
         <h3 className="text-white font-bold mb-4">Theme Color</h3>
@@ -561,7 +598,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
   );
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+    <div className="h-full w-full bg-black flex flex-col fixed inset-0 z-[100]">
       {/* Header */}
       <div className="p-4 border-b border-[#9298a6] flex items-center justify-between bg-[#050505]">
         <div className="flex items-center gap-3">
@@ -589,9 +626,23 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
              subView === 'about' ? 'About' : 'Settings'}
           </h2>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-gray-400">
-          <X size={24} />
-        </button>
+
+        {subView === 'profile' && (
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-yellow-500 text-black font-bold rounded-xl text-sm active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            {isSaving ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+            Save
+          </button>
+        )}
+
+        {subView === 'main' && (
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-gray-400">
+            <X size={24} />
+          </button>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -605,7 +656,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
           </motion.div>
         )}
         {subView === 'privacy' && (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 space-y-6">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 pb-32 space-y-6 overflow-y-auto flex-1">
             <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] overflow-hidden">
               <div className="p-4 flex items-center justify-between border-b border-[#9298a6]">
                 <div>
@@ -627,7 +678,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
           </motion.div>
         )}
         {subView === 'payments' && (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 space-y-6">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 pb-32 space-y-6 overflow-y-auto flex-1">
             <div className="bg-gray-900/50 rounded-3xl border border-[#9298a6] p-6 text-center">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
                 <CreditCard size={32} className="text-purple-400" />
@@ -652,7 +703,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
           </motion.div>
         )}
         {subView === 'privacy-policy' && (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-6 space-y-4 overflow-y-auto max-h-[70vh] scrollbar-hide">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-6 pb-32 space-y-4 overflow-y-auto max-h-full scrollbar-hide flex-1">
             <h3 className="text-white font-bold text-lg">Privacy Policy</h3>
             <div className="text-gray-400 text-sm leading-relaxed space-y-4">
               <p>
@@ -683,7 +734,7 @@ export function SettingsView({ onClose, user, onTopUp, onAboutUs, initialSubView
           </motion.div>
         )}
         {subView === 'blocked' && (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 space-y-4">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4 pb-32 space-y-4 overflow-y-auto flex-1">
             {blockedAccounts.length === 0 ? (
               <div className="text-center py-20 text-gray-500">
                 <Lock size={48} className="mx-auto mb-4 opacity-20" />

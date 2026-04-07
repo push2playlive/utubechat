@@ -27,7 +27,9 @@ import { TopUpModal } from './components/TopUpModal';
 import { AuthView } from './components/AuthView';
 import { AboutUsView } from './components/AboutUsView';
 import { SidebarMenu } from './components/SidebarMenu';
-import { HamburgerIcon } from './components/Logos';
+import { CommandNexusChoice } from './components/CommandNexusChoice';
+import { LearnToEarn } from './components/LearnToEarn';
+import { HamburgerIcon, UtubeChatLogo } from './components/Logos';
 import { MOCK_VIDEOS, CURRENT_USER, PARTNER_SITES } from './constants';
 import type { View, User, Video } from './types';
 import { Coins, User as UserIcon, Settings, HelpCircle, LogOut, ChevronRight, ChevronUp, ChevronDown, Wallet, ShoppingBag, Users, Search, Video as VideoIcon, CheckCircle, Sparkles, Radio, DollarSign, MessageSquare, Heart, Globe, Flame, Play, Brain, Megaphone, X, LogIn, Zap, Shield, Mail, Smartphone, Camera, Eye, CreditCard, Home, Plus, MessageCircle, Phone, MapPin, Info, Menu } from 'lucide-react';
@@ -57,8 +59,10 @@ function App() {
   const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isTuningMode, setIsTuningMode] = useState(false);
+  const [showNexusChoice, setShowNexusChoice] = useState(false);
+  const [showLearnToEarn, setShowLearnToEarn] = useState(false);
   const [initialMessageUser, setInitialMessageUser] = useState<any>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User>(CURRENT_USER);
   const [miniPlayerVideo, setMiniPlayerVideo] = useState<Video | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(false);
@@ -243,6 +247,12 @@ function App() {
   }, []);
 
   const syncUserProfile = async (sUser: SupabaseUser) => {
+    // If we already have a user state that is NOT the default guest, 
+    // and we are in demo mode, don't overwrite it.
+    if (!isConfigured && user.id === sUser.id && user.id !== 'guest_1') {
+      return;
+    }
+
     if (!isConfigured) {
       // Use mock profile if Supabase is not configured
       setUser({
@@ -255,7 +265,10 @@ function App() {
         followers: 0,
         following: 0,
         likes: 0,
-        role: 'user'
+        badge: 'white',
+        tier: 'public',
+        role: 'user',
+        bio: 'Guru Master Architect in training.'
       });
       return;
     }
@@ -277,7 +290,9 @@ function App() {
           coins: 100,
           followers: 0,
           following: 0,
-          likes: 0
+          likes: 0,
+          badge: 'white',
+          tier: 'public'
         };
         await supabase.from('users').insert([newUser]);
         
@@ -290,7 +305,9 @@ function App() {
           followers: 0,
           likes: 0,
           is_verified: (sUser.email === 'findlaygary25@gmail.com' || sUser.email === 'push2playlive@gmail.com'),
-          role: newUser.role
+          role: newUser.role,
+          badge: 'white',
+          tier: 'public'
         }]);
 
         // Sync with CommandNexus
@@ -1284,14 +1301,129 @@ function App() {
     );
   };
 
-  const renderProfile = () => (
-    <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
+  const renderProfile = () => {
+    if (!user) return null;
+    return (
+      <div className="h-screen w-full bg-black text-white overflow-y-auto pb-32 pt-16 px-4 scrollbar-hide">
       <div className="flex flex-col items-center mt-8">
-        <div className="w-24 h-24 rounded-full border-2 border-[#9298a6] overflow-hidden mb-4">
-          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-        </div>
-        <h2 className="text-xl font-bold">{user.name}</h2>
-        <p className="text-gray-400 text-sm mb-4">{user.username}</p>
+        {/* Elite Membership Card */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={`w-full max-w-sm p-6 rounded-[2.5rem] border mb-8 relative overflow-hidden group ${
+            user.badge === 'purple' ? 'bg-gradient-to-br from-purple-900/40 to-black border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.2)]' :
+            user.badge === 'cyan' ? 'bg-gradient-to-br from-cyan-900/40 to-black border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.2)]' :
+            user.badge === 'green' ? 'bg-gradient-to-br from-green-900/40 to-black border-green-500/50 shadow-[0_0_50px_rgba(34,197,94,0.2)]' :
+            'bg-gray-900/50 border-gray-800'
+          }`}
+        >
+          <div className="relative z-10 flex flex-col gap-6">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">CommandNexus ID</p>
+                <h3 className="text-xl font-black tracking-tighter">
+                  {user.name.toUpperCase()}
+                </h3>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                user.badge === 'purple' ? 'bg-purple-500 text-white border-purple-400' :
+                user.badge === 'cyan' ? 'bg-cyan-500 text-black border-cyan-400' :
+                user.badge === 'green' ? 'bg-green-500 text-black border-green-400' :
+                'bg-white text-black border-gray-300'
+              }`}>
+                {user.badge} badge
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className={`w-20 h-20 rounded-2xl border-2 overflow-hidden shadow-xl ${
+                user.badge === 'purple' ? 'border-purple-500' :
+                user.badge === 'cyan' ? 'border-cyan-500' :
+                user.badge === 'green' ? 'border-green-500' :
+                'border-gray-700'
+              }`}>
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-gray-400">{user.username}</p>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${
+                    user.badge === 'purple' ? 'bg-purple-500' :
+                    user.badge === 'cyan' ? 'bg-cyan-500' :
+                    user.badge === 'green' ? 'bg-green-500' :
+                    'bg-gray-500'
+                  }`} />
+                  <span className="text-[10px] text-gray-500 uppercase font-black">Status: {user.tier}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-end pt-4 border-t border-white/5">
+              <div className="space-y-1">
+                <p className="text-[8px] text-gray-600 uppercase tracking-widest">Ecosystem Access</p>
+                <div className="flex gap-2">
+                  <Shield size={12} className={user.badge !== 'white' ? 'text-white' : 'text-gray-800'} />
+                  <Brain size={12} className={['green', 'cyan', 'purple'].includes(user.badge) ? 'text-white' : 'text-gray-800'} />
+                  <Zap size={12} className={['cyan', 'purple'].includes(user.badge) ? 'text-white' : 'text-gray-800'} />
+                  <Sparkles size={12} className={user.badge === 'purple' ? 'text-white' : 'text-gray-800'} />
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] text-gray-600 uppercase tracking-widest">Balance</p>
+                <p className="text-lg font-black text-white">{user.coins.toLocaleString()} <span className="text-[10px] text-gray-500">UC</span></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all duration-1000" />
+          <div className="absolute bottom-0 left-0 p-4 opacity-10">
+            <UtubeChatLogo size={80} />
+          </div>
+        </motion.div>
+
+        {user.badge === 'white' && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowNexusChoice(true)}
+            className="w-full max-w-sm mb-8 bg-gradient-to-r from-purple-600 to-blue-600 p-4 rounded-2xl flex items-center justify-between group shadow-xl shadow-purple-500/20"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Zap size={20} className="text-white" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-bold text-sm">UPGRADE MEMBERSHIP</p>
+                <p className="text-white/60 text-[10px]">Unlock Pro & Elite features</p>
+              </div>
+            </div>
+            <ChevronRight className="text-white/50 group-hover:text-white transition-colors" />
+          </motion.button>
+        )}
+
+        {user.badge === 'purple' && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsMessagesOpen(true)}
+            className="w-full max-w-sm mb-8 bg-gray-900 border border-purple-500/30 p-4 rounded-2xl flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Lock size={20} className="text-purple-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-bold text-sm uppercase tracking-tighter">Windowless HQ</p>
+                <p className="text-purple-500/60 text-[10px]">Private Elite Channel Active</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+              <ChevronRight className="text-gray-600 group-hover:text-white transition-colors" />
+            </div>
+          </motion.button>
+        )}
         
         {user.bio && (
           <p className="text-center text-sm text-gray-300 max-w-xs mb-6 px-4 leading-relaxed">
@@ -1470,7 +1602,8 @@ function App() {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderShop = () => (
     <div className="h-screen w-full bg-black text-white overflow-y-auto pb-20 pt-16 px-4">
@@ -1807,6 +1940,7 @@ function App() {
           </div>
           <span className="text-primary font-black text-xl tracking-tight">utubechat</span>
         </div>
+      </div>
 
         <div className="flex-1 max-w-2xl mx-12 relative">
           <input 
@@ -1942,6 +2076,7 @@ function App() {
           onLiveClick={() => setIsLiveOpen(true)}
           onSearchClick={() => setCurrentView('discover')}
           onMenuClick={() => setIsSidebarOpen(true)}
+          onCreateClick={() => setCurrentView('create')}
         />
       </div>
 
@@ -1989,10 +2124,11 @@ function App() {
         )}
 
         {currentView === 'settings' && (
-          <div className="h-full w-full overflow-y-auto pb-20 scrollbar-hide bg-black">
+          <div className="h-full w-full bg-black relative z-50">
             <SettingsView 
               onClose={() => setCurrentView('home')} 
               user={user} 
+              onUpdateUser={(updatedUser) => setUser(updatedUser)}
               onTopUp={() => setIsTopUpModalOpen(true)}
               onAboutUs={() => setIsAboutUsOpen(true)}
               initialSubView={initialSettingsSubView}
@@ -2062,7 +2198,46 @@ function App() {
         )}
       </div>
 
-      {/* Mini Player */}
+      {/* Nexus Overlays */}
+      <AnimatePresence>
+        {showNexusChoice && (
+          <CommandNexusChoice 
+            onSelectPay={() => {
+              // Simulate Stripe/Crypto redirect
+              setShowNexusChoice(false);
+              if (user) {
+                const updatedUser = { ...user, badge: 'cyan' as const, tier: 'pro' as const };
+                setUser(updatedUser);
+                // Update in DB if configured
+                if (isConfigured) {
+                  supabase.from('public_profiles').update({ badge: 'cyan', tier: 'pro' }).eq('id', user.id);
+                }
+              }
+            }}
+            onSelectLearn={() => {
+              setShowNexusChoice(false);
+              setShowLearnToEarn(true);
+            }}
+          />
+        )}
+        {showLearnToEarn && (
+          <LearnToEarn 
+            user={user}
+            onClose={() => setShowLearnToEarn(false)}
+            onComplete={() => {
+              setShowLearnToEarn(false);
+              if (user) {
+                const updatedUser = { ...user, badge: 'green' as const, tier: 'learner' as const };
+                setUser(updatedUser);
+                // Update in DB if configured
+                if (isConfigured) {
+                  supabase.from('public_profiles').update({ badge: 'green', tier: 'learner' }).eq('id', user.id);
+                }
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {miniPlayerVideo && !['home', 'inbox', 'create', 'discover', 'ad-center', 'settings', 'mentors', 'partners', 'shop', 'profile', 'admin'].includes(currentView) && !isOverlayOpen && (
           <motion.div
@@ -2161,8 +2336,6 @@ function App() {
         }} 
       />
 
-      <AnimatePresence>
-      </AnimatePresence>
 
       <BottomNav 
         currentView={currentView} 

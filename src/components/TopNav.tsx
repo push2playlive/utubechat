@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { UtubeChatLogo, HamburgerIcon } from './Logos';
 
 interface TopNavProps {
@@ -8,9 +8,10 @@ interface TopNavProps {
   onLiveClick?: () => void;
   onSearchClick?: () => void;
   onMenuClick?: () => void;
+  onCreateClick?: () => void;
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveClick, onSearchClick, onMenuClick }) => {
+export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveClick, onSearchClick, onMenuClick, onCreateClick }) => {
   const [logoColor, setLogoColor] = useState('#ef4444');
 
   useEffect(() => {
@@ -67,8 +68,17 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, onLiveCl
         </button>
       </div>
 
-      <div className="pointer-events-auto cursor-pointer" onClick={onSearchClick}>
-        <Search size={24} color="white" />
+      <div className="flex items-center gap-4 pointer-events-auto">
+        <button 
+          onClick={onCreateClick}
+          className="w-10 h-10 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-all active:scale-90 flex items-center justify-center"
+          title="Create Video"
+        >
+          <Plus size={24} color="white" />
+        </button>
+        <div className="pointer-events-auto cursor-pointer" onClick={onSearchClick}>
+          <Search size={24} color="white" />
+        </div>
       </div>
     </div>
   );

@@ -19,6 +19,8 @@ export interface Video {
   createdAt?: string;
 }
 
+export type Badge = 'white' | 'green' | 'cyan' | 'purple';
+
 export interface User {
   id: string;
   name: string;
@@ -33,6 +35,8 @@ export interface User {
   likes: number;
   avatar: string;
   walletAddress?: string;
+  badge: Badge;
+  tier: 'public' | 'learner' | 'pro' | 'elite';
   role?: 'admin' | 'user' | 'starter' | 'guru' | 'guru-master-elite';
   coursesCompleted?: number;
   referralCredits?: number;
